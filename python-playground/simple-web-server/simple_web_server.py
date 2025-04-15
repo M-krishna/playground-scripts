@@ -1,4 +1,7 @@
+#!/usr/bin/env python3
 import socket
+from http_parser import parse_http_request
+from client_response import construct_client_response
 
 # Create a socket object (I need to explore other configs later)
 socket_obj = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -14,14 +17,7 @@ socket_obj.listen(1)
 while True:
     sock_connection, address_info = socket_obj.accept()              # Waits for an incoming connection (I assume this is a blocking request)
     request_data = sock_connection.recv(1024).decode("utf-8")        # The maximux size of the request data must be 1MB
-    print(request_data)
-    # Can I parse the request data to extract information like
-    # 1. Request method
-    # 2. Host
-    # 3. User agent
-    # 4. HTTP version
-    # 5. Endpoint
-    # 6. Data
-    sock_connection.send("Hello from server!".encode("utf-8"))
+    request_obj = parse_http_request(request_data)                   # Parse the http request
+    response = construct_client_response()
+    sock_connection.send(response)
     sock_connection.close()
-    break
