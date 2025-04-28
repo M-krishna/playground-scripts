@@ -6,6 +6,7 @@ Compute plusone 11.
 
 Definition minusone (n: nat): nat := pred n.
 Compute minusone 22.
+Compute minusone 0.
 
 
 (*Implementing our own pred *)
@@ -544,5 +545,4 @@ Example test_remove_all3: count 4 (remove_all 5 [2;1;4;5;1;4]) = 2.
 Example test_remove_all4: count 5 (remove_all 5 [2;1;5;4;5;1;4;5;1;4]) = 0.
     Proof. simpl. reflexivity. Qed.
 
-Fixpoint included (s1 : bag) (s2 : bag) : bool :=
-    
+(*Fixpoint included (s1 : bag) (s2 : bag) : bool :=*)
