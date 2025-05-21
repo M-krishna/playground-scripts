@@ -123,4 +123,5 @@ function composeCPS(f, g) {
 }
 
 const incrementAndDouble = composeCPS(doubleCPS, incrementCPS);
-incrementAndDouble(2, console.log)
+const squareAndIncrementAndDouble = composeCPS(squareCPS, incrementAndDouble);
+squareAndIncrementAndDouble(2, console.log) // should return 36
