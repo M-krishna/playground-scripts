@@ -118,7 +118,9 @@ function composeCPS(f, g) {
         // Here x is the input of type number
         // And k is the callback function
         if (typeof x !== 'number') throw new TypeError("Expected an argument of type number");
-        return g(x, (y) => f(y, k));
+        g(x, function (resultOfG) {
+            f(resultOfG, k)
+        });
     }
 }
 
