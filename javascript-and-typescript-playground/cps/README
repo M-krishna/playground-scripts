@@ -171,3 +171,23 @@ function greetCPS(name, k) {
 
 greetCPS("krishna", console.log)
 ```
+
+
+Next steps
+----------
+1. Compose CPS functions together
+2. Introduce error handling via dual continuations
+3. Use accumulators for true tail-recursion
+4. Model asynchronous control flow with timeouts and I/O
+5. Transform non-trivial direct-style function into CPS
+
+
+1. Composing CPS Functions
+--------------------------
+
+Pratice chaining CPS functions so that the output of one feeds into the next.
+
+* Exercise 1.1: Pipeline of simple Ops
+    * Write three CPS functions - "incrementCPS(n, k)" calls "k(n + 1)"; "doubleCPS(n, k)" calls "k(n * 2)"; and "squareCPS(n, k)" calls "k(n * n)"
+
+    * Compose them to compute "((x + 1) * 2) ^ 2" in CPS, without nesting allow callbacks more than once.
