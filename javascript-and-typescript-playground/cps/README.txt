@@ -182,12 +182,4 @@ Next steps
 5. Transform non-trivial direct-style function into CPS
 
 
-1. Composing CPS Functions
---------------------------
-
-Pratice chaining CPS functions so that the output of one feeds into the next.
-
-* Exercise 1.1: Pipeline of simple Ops
-    * Write three CPS functions - "incrementCPS(n, k)" calls "k(n + 1)"; "doubleCPS(n, k)" calls "k(n * 2)"; and "squareCPS(n, k)" calls "k(n * n)"
-
-    * Compose them to compute "((x + 1) * 2) ^ 2" in CPS, without nesting allow callbacks more than once.
+Check out `cps/exercise*.js` file to know about the implementation details.
