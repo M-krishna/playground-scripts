@@ -120,3 +120,17 @@ const add3AndMultiply2Andsubtract1 = composeCps(subtract1Cps, add3AndMultiply2);
 
 add3AndMultiply2Andsubtract1(5, console.log)
 
+// Let's implement a composeCps function that takes in N number of functions
+// as its argument
+function typeCheck(fn) {
+    if (typeof fn !== 'function') throw new TypeError("Expected an argument of type function");
+}
+
+function composeCpsN(...args) {
+    args.map(typeCheck);
+    return function (initialValue, continuationFunction) {
+    }
+}
+
+const newComposeFunction = composeCpsN(subtract1Cps, multiply2Cps, add3Cps);
+newComposeFunction(5, console.log);
