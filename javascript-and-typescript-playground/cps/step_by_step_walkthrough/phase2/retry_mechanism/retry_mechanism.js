@@ -1,49 +1,34 @@
 // Checkout the README file for the problem statement
 
-// But first, lets try to solve this problem in a traditional way without using CPS
-
-
-
-
-
-
-// End of traditional way
-
-function retryWithBackoffCps(
-    operation,
-    maxAttempts,
-    initialDelay,
-    successCont,
-    failureCont
-) {
-    // Here "operation" is a function, that itself will take successCont and failureCont
-    operation()
-}
-
-
-// Our mock server
+// Mock server
 function mockServer(onSuccess, onError) {
-    function wrapper() {
-        const randomNumber = Math.floor(Math.random() * 3); // generate random number upto 2
-        if (randomNumber === 2) {
-            onSuccess({"success": true, "data": "Hey there!"})
-        } else {
-            onError({"success": false, "data": "Something went wrong!"})
-        }
+    const randomNumber = Math.floor(Math.random() * 3); // random number
+    if (randomNumber === 2) {
+        onSuccess({ success: true, data: "Hello there" })
+        return;
     }
-    setTimeout(wrapper, 1000);
+    onError({ success: false, error: "Something went wrong" });
+    return;
 }
 
 
-function asyncOperationCps(url, onSuccess, onError) {
+function getData(maxRetries, initialDelay, onSuccess, onError) {
+    let attempts = 1;
 
+    function attempt() {
+        console.log(`Attempt number: ${attempts}`);
+        mockServer(onSuccess, function (err) {
+            if (attempts > maxRetries) {
+                onError(err);
+            } else {
+                const delay = initialDelay * attempts; // Linear backoff
+                attempts += 1;
+                setTimeout(attempt, delay);
+            } 
+        })
+    }
+    attempt();
 }
 
 
-retryWithBackoffCps(
-    someOperation,  // some async operation
-    3,              // max attempt
-    100,            // initial delay (100ms)
-    console.log,
-    console.error
-);
+getData(3, 1000, console.log, console.error);
