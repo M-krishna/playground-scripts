@@ -41,16 +41,26 @@ const validateEmailAndPassword = composeCps(validatePassword, validateEmail);
 validateEmailAndPassword(userData, console.log, console.error);
 
 
+function composeCpsN(...fns) {
+    return function (...args) {
+        
+    }
+}
+
+function pipelineProcessor(
+    data,
+    stages,
+    onSuccess,
+    onError
+) {
+    // Let's assume for a moment that we have our composeCpsN function
+    const composed = composeCpsN(stages);
+    composed(data, onSuccess, onError);
+}
+
+
 const stages = [validateEmail, validatePassword];
 
-// function pipelineProcessor(
-//     userData,
-//     stages,
-//     successContinuation,
-//     errorContinuation
-// ) {
-//     // can I compose the stages?
-//     function compose(...args) {
-
-//     }
-// }
+pipelineProcessor(
+    userData, stages, console.log, console.error
+);

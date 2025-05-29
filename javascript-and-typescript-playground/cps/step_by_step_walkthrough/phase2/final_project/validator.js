@@ -78,3 +78,55 @@ chainValidators(
     console.log,
     console.error
 );
+
+
+
+// ********** Let's build a proper validator which doesn't accumulate error ************ /
+
+function createValidator(fn, errorMessage) {
+    return function (value, onSuccess, onError) {
+        if (fn(value)) onSuccess(value);
+        else onError(errorMessage);
+    }
+}
+
+
+// We'll write a validation library for validating password
+
+const passwordRequired = createValidator(
+    value => value !== null && value !== '',
+    "Password must not be empty"
+);
+
+const minLength = createValidator(
+    value => value.length >= 8,
+    "minimum 8 characters required for password"
+);
+
+const atLeastOneCaps = createValidator(
+    value => /[A-Z]/.test(value),
+    "at least one captital letter"
+);
+
+const atleastOneSymbol = createValidator(
+    value => /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/.test(value),
+    "Password must contain atleast one special character"
+);
+
+// *************** End of validation libraries *************** /
+
+
+const passwordValidators = [passwordRequired, minLength, atLeastOneCaps, atleastOneSymbol];
+
+
+function passwordValidatorChain(password, validators, onSuccess, onError) {
+    
+}
+
+
+passwordValidatorChain(
+    "mypassword",
+    passwordValidators,
+    console.log,
+    console.error
+);
