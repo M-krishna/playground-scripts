@@ -117,16 +117,3 @@ const atleastOneSymbol = createValidator(
 
 
 const passwordValidators = [passwordRequired, minLength, atLeastOneCaps, atleastOneSymbol];
-
-
-function passwordValidatorChain(password, validators, onSuccess, onError) {
-    
-}
-
-
-passwordValidatorChain(
-    "mypassword",
-    passwordValidators,
-    console.log,
-    console.error
-);
