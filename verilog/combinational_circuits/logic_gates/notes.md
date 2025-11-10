@@ -9,3 +9,9 @@ Consider we are given the "nand" gate by God. We have to build all the other com
 * NOR
 * XOR
 * XNOR
+
+## Basic Arithmetic circuits
+* Half Adder
+* Full Adder
+* Half Subtractor
+* Full Subtractor
