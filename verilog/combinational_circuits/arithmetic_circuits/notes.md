@@ -82,3 +82,74 @@ The first 4 rows of **Cout** column resembles the output of an **AND** gate. And
 **Step 4: Final Carry**
 * Combine both carries:
     * Cout = Carry1 or Carry2 = (A and B) or ((A xor B) and Cin)
+
+## What is a Half Subtractor?
+A Half Subtractor is a combinational/arithmetic logical circuit that performs the subtraction of two single-bit binary numbers, A and B.
+
+It calculates: **Difference = A - B**
+
+and outputs:
+* **Difference(D)** - the result of the subtraction
+* **Borrow(B_out)** - indicates if a 1 needs to be borrowed from the next higher bit
+
+### Inputs and Outputs
+| Signal | Meaning |
+|--------|---------|
+| A | Minuend (the number to be subtracted from) |
+| B | Subtrahend (the number being subtracted) |
+| D | Difference output |
+| B_out | Borrow output |
+
+### Truth Table
+| A | B | Difference (D) | Borrow (B_out) |
+|---|---|----------------|----------------|
+| 0 | 0 | 0 | 0 |
+| 0 | 1 | 1 | 1 |
+| 1 | 0 | 1 | 0 |
+| 1 | 1 | 0 | 0 |
+
+### Logic Equations
+From the truth table:
+* Difference = `A xor B`
+* Borrow = `(~A) and B`
+
+## What is Full Subtractor?
+A Full Subtractor is a combinational logic circuit that performs subtraction on **three one-bit binary numbers**:
+* the **minuend(A)**
+* the **subtrahend(B)**
+* the **borrow-in(Bin)** - the borrow from the previous(less significant) subtraction.
+
+It gives two outputs:
+* **Difference(D)** - the result of **A - B - Bin**
+* **Borrow-out(Bout)** - the borrow output to the next stage
+
+### Truth Table
+| A | B | Bin | D | Bout |
+|---|---|-----|---|------|
+| 0 | 0 | 0 | 0 | 0 |
+| 0 | 0 | 1 | 1 | 1 |
+| 0 | 1 | 0 | 1 | 1 |
+| 0 | 1 | 1 | 0 | 1 |
+| 1 | 0 | 0 | 1 | 0 |
+| 1 | 0 | 1 | 0 | 0 |
+| 1 | 1 | 0 | 0 | 0 |
+| 1 | 1 | 1 | 1 | 1 |
+
+### Logic Equations
+From the truth table:
+* We have to use 2 Half subtractor
+* One OR gate
+
+Just like how we build Full Adder.
+
+### Circuit Explanation
+1. Step 1: First Half Subtractor
+    * Subtracts B from A
+        * -> produces **Difference1** and **Borrow1**
+
+2. Step 2: Second Half Subtractor
+    * Subtracts **Bin** from **Difference1**
+        * -> produces **Difference** and **Borrow2**
+
+3. Combine Borrows
+    * `Bout = Borrow1 + Borrow2`
