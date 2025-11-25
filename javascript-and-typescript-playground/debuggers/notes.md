@@ -590,3 +590,211 @@ The debugger will stop **only when condition is true**. Debuggers internally eva
 In Devtools sidebar, enable:
 * Pause on exceptions
 * Pause on caught exceptions (optional)
+
+## Advanced
+1. Debugging **async functions**
+2. Debugging **Promises**
+3. Debugging **event loops & timers**
+4. Debugging **errors & crashes**
+5. Debuggin in **VS Code**
+6. Debugging **real node apps**
+7. Remote debugging (Docker, SSH, PM2, etc.)
+8. Advanced breakpoints (logpoints, data breakpoints)
+
+## Section 4B - Debugging Async code
+> Checkout file: `advanced/async-example.js`
+
+Debug it:
+```
+node --inspect-brk async-example.js
+```
+
+### What to observe?
+1. Break before `await fetchUser(42)`
+* Place breakpoint on this line and hit Resume.
+* Then press **Step Over**
+* You'll notice:
+    * The debugger pauses immediately
+    * But execution resumes only after the promise resolves.
+    * Node/V8 jumps you to after `await`
+
+This demonstates **how V8 pauses async execution**
+
+## Section 4C - Debugging Promise Chains
+> Checkout: `advanced/promise-chains.js`
+
+Check: Pause on uncaught errors/exceptions
+
+## Section 4D - Debugging Event Loop & Timers
+> Checkout: `advanced/timers.js`
+
+## Section 4E - Debugging Crashes
+> Checkout: `advanced/debugging-crashes.js`
+Enable:
+* Pause on exceptions
+* Pause on caught exceptions
+
+You will land exactly on the offending line.
+
+You can inspect:
+* call stack
+* local variables
+* execution context
+
+## Section 4F - Debugging in VS Code (Most used in Real work)
+1. Open folder in VS Code.
+2. Create `.vscode/launch.json`
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug File",
+      "program": "${file}"
+    }
+  ]
+}
+```
+Now press **F5** to launch debugger.
+
+**What VS Code gives you:**
+* Breakpoints
+* Conditional breakpoints
+* Logpoints (super useful)
+* Variable panel
+* Call stack
+* Watch pane
+* Terminal + Debug console
+* Async call stack
+
+## Section 4G - Debugging a Real Node Server
+> Checkout: `advanced/server.js`
+
+Debug with: `node --inspect server.js`
+
+Set breakpoints inside request handler.
+
+**Useful tricks**
+* Debug multiple requests
+* Inspect headers/body
+* Trace async chain (timers, promises)
+* Use VS Code's "Restart server on file change"
+
+## Section 4H - Remote Debugging
+**Debug a node process running on server:**
+```
+node --inspect=0.0.0.0:9229 app.js
+```
+
+SSH-port-forward:
+```
+ssh -L 9229:localhost:9229 user@server
+```
+Attach debugger from your local VS Code.
+
+## Section 4I - Advanced Breakpoints
+1. Conditional Breakpoint
+Right-click -> Edit breakpoint
+```
+x > 10 && user.isAdmin
+```
+
+2. Logpoints (no stop)
+Right-click -> Add Logpoint
+```
+User is %o
+```
+Debugger prints message **without halting execution**. Very help when logs are noisy
+
+3. DOM Breakpoints (for browsers)
+
+4. Data breakpoints (in languages with direct memory access)
+Not available in JS, but exists in C++/Rust debuggers
+
+## Part 3 - Deep Debugger Internals
+We will go section by section:
+* 3A - How breakpoints really work under the hood
+* 3B - How a debugger attaches to a running process
+* 3C - How source maps work (TS -> JS)
+* 3D - How async debugging works internally
+* 3E - How scopes, closures, variables are stored in V8
+
+Each section will have:
+* Theory
+* Code example
+* What the debugger is actually doing behind the scenes
+
+## 3A - How Breakpoints Really Work
+Breakpoints look simple ("pause here"), but internally, they're suprisingly complex.
+
+### 3A-1: What is a breakpoint?
+A breakpoint is not a **magical marker**. It is literally:
+
+**A deliberate CPU instruction or bytecode instruction inserted into your program so the VM stops.**
+
+In low-level CPUs, it inserts:
+* an **INT 3 (interrupt)** instruction in x86
+* which forces the CPU to trap into the debugger 
+
+In JavaScript (V8), breakpoints exists at the **bytecode level**, not CPU level.
+
+### 3A-2: How V8 represents breakpoints
+When your JavaScript is parsed:
+```
+console.log("hello");
+const x = 40 + 2;
+```
+
+V8 compiles it into **bytecode**. For example:
+```
+0: LdaConstant ...
+1: Star r1
+2: LdaSmi 40
+3: Add r1, #2
+4: Return
+```
+A breakpoint modifies this bytecode:
+* At offset 3, V8 inserts a **DebugBreak** instruction.
+* This "trap" instruction notifies the debugger.
+
+### 3A-3: How stepping works
+When you press: **Resume**
+
+Debugger removes the break opcode -> original bytecode restored -> execution continues.
+
+**Step Over / Step In / Step Out**
+
+Debugger sets **temporary breakpoints** on the next instruction(s).
+
+Stepping works by scheduling micro breakpoints dynamically.
+
+### 3A Example: Viewing V8 bytecode
+```
+function add(a, b) {
+    return a + b;
+}
+add(2, 3);
+```
+
+Run with V8 flags:
+```
+node --print-bytecode bytecode.js
+```
+You'll see output like:
+```
+0x... <Bytecode for function add>
+0: Ldar a0
+1: Add a1
+2: Return
+```
+
+If you set a breakpoint inside DevTools, V8 replaces instruction #1 with a **DebugBreak**
+
+### Summary of 3A
+**Breakpoints work by:**
+* Inserting "trap" bytecode instructions
+* Pausing the VM thread
+* Allowing the debugger to inspect scope/variables
+* Restoring original bytecode upon resume
