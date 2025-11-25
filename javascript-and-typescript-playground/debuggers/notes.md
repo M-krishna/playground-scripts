@@ -561,3 +561,32 @@ b: 5
 **Hover Inspection**
 
 Hover over `n`, `a` or `b` -> Devtools shows values inline. This demonstrates how debuggers read memory values.
+
+### Step 7: Watch Expressions
+In Watch panel:
+* Add `a`
+* Add `b * 10`
+* Add `typeof double`
+
+Watches update live on each step. This teaches expression evaluation under the hood.
+
+### Step 8: Call Stack Exploration
+When inside `add()` you'll see:
+```
+add
+double
+(anonymous) <- entry point
+```
+You can click each stack frame and view variables *at that level* - demonstrating how the debugger walks stack frames.
+
+### Step 9: Conditional Breakpoints
+Right-click on a breakpoint -> "Edit breakpoint". Try:
+```
+a > 5
+```
+The debugger will stop **only when condition is true**. Debuggers internally evaluate the condition in the paused VM context.
+
+### Step 10: Exception Breakpoints
+In Devtools sidebar, enable:
+* Pause on exceptions
+* Pause on caught exceptions (optional)
