@@ -230,3 +230,334 @@ Used for:
 * Use conditional breakpoints instead of spammy logs
 * Inspect the call stack often
 * Debug the smallest reproducible example
+
+## Part 2: Debugging Internals (How Debuggers actually work)
+
+### 2.1 What happens when you hit a breakpoint?
+Debugging relies on one fundamental mechanism:
+> **The debugger has the ability to interrupt execution at precise points and inspect internal state**
+
+When execution reaches a breakpoint:
+1. The runtime pauses the execution thread
+2. It collects:
+    * current instruction pointer
+    * call stack frames
+    * variables & scopes
+    * closures
+    * heap references
+3. It sends a "paused" event to the debugger client
+4. The debugger displays:
+    * line of code
+    * variables
+    * call stack
+    * watches
+5. The debugger waits for your next command:
+    * continue
+    * step over
+    * step into
+    * evaluate expression
+
+This pause/resume control is the core of debugging.
+
+### 2.2 How the debugger communicates with the runtime
+Debuggers communicate through **protocols**.
+
+**Examples:**
+* **V8 Inspector Protocol** -> Node.js, Chrome
+* **DAP(Debug Adapter Protocol)** -> VS Code wrapper
+* **GDB Remote Protocol** -> C/C++
+* **JDWP** -> Java
+* **pdb hooks** -> Python
+
+A debugger session is like a chat:
+```
+IDE -> Runtime: Set breakpoint at file X line 42
+Runtime -> IDE: Breakpoint #7 set at actual code offset 52
+Runtime -> IDE: Paused at offset 52
+IDE -> Runtime: Step over
+Runtime -> IDE: Paused at offset 53
+... and so on
+```
+Every step is a message.
+
+### 2.3 How breakpoints are implemented?
+There are **two physical mechanisms** for breakpoints depending on language:
+
+**A. VM/interpreter breakpoints (Javascript, Python, Ruby, Java, C#, etc.)**
+
+The interpreter/VM simply checks:
+
+**"Is this instruction a breakpoint location?"**
+
+If yes, it stops execution.
+
+The VM inserts internal markers at the given instruction pointer.
+
+This is easy for languages that run on high-level VMs with bytecode.
+
+**B. Native breakpoints (C/C++)**
+
+Native debugging works differently.
+
+To pause a CPU instruction, debuggers insert:
+```
+INT3 (0xCC)
+```
+
+- a CPU interrupt instruction.
+
+The CPU stops and transfers control to the debugger. This is how **GDB, LLDB, WinDbg** work internally.
+
+### 2.4 How stepping works (the details)
+Stepping relies on instruction-level control.
+
+**Step Into**
+
+Pause after the next instruction, even if it's inside another function.
+
+**Step Over**
+* If a function call is on the current line:
+    * Set a **temporary breakpoint** at the next line in the current frame.
+    * Resume execution
+    * Pause when temporary breakpoint hits
+
+**Step Out**
+* Set breakpoint at return address of the current frame
+* Resume
+* Pause when return instruction is reached
+> Behind the scenes, stepping is implemented by adding temporary breakpoints based on the call stack.
+
+### 2.5 How debuggers capture the call stack
+Every runtime maintains a **stack**:
+```
+Frame #3: parseJSON()
+Frame #2: fetchData()
+Frame #1: main()
+```
+
+Every frame contains:
+* local variables
+* arguments
+* return address
+* function context/closure
+* instruction pointer
+
+When paused, debugger reads the runtime's stack data structure.
+
+* In native languages, stack frames are actually memory stacks.
+* IN VM (JS, Python), stack frames are objects in the runtime. 
+
+### 2.6 How debuggers read variables
+Variables live in "scope objects":
+* local scope
+* closure scope
+* block scope
+* global scope
+
+The runtime keeps references. When paused, the debugger queries:
+```
+Give me all variables in Frame #3:
+    - locals
+    - closure variables
+    - classes / this
+    - block variables
+```
+The debugger then walks the scope chain.
+
+### 2.7 How expressions are evaluated?
+When you type into the "console" of the debugger (like VS Code debug console):
+```
+user.name
+items.length
+calculateTotal(price, tax)
+```
+The debugger does:
+* Inject your expression into the paused VM context
+* Execute it in the current scope
+* Capture returned value
+* Send result back to IDE
+
+This is why evaluating expressions **can have side effects**
+
+### 2.8 Debugging transformed code (minified, bundled, transpiled)
+This is crucial for TS -> JS.
+
+To map breakpoints to the original code, debuggers use:
+
+**Source Maps**
+
+A source map file answers:
+> "Line 10 in generated code corresponds to line 3 in original file"
+
+A debugger:
+* Reads the source map
+* Translates breakpoint
+* Shows original source UI
+* Pauses at correct generated location
+
+**Without source maps**:
+* Breakpoints become offset or incorrect
+* Stack traces point to compiled JS, not TS
+
+### 2.9 Debugging asynchronous code (Javascript)
+Debugging async is complex.
+
+Challenges:
+* Execution threads don't remain active
+* Call stack disappears during `await`
+* Context jumps across event loop ticks
+
+Modern V8 implements **async stack traces** by storing "promise parents".
+
+So you see:
+```
+main()
+  at doSomething()
+    at await fetchData()
+      at someAsyncFn()
+```
+This isn't the real stack - it's a reconstructed stack created by V8 debugger tooling.
+
+### 2.10 Exception breakpoints
+Debuggers can pause on:
+* thrown exceptions
+* caught exceptions
+* uncaught errors
+
+Internally:
+* runtime checks for throw events
+* debugger pauses before propagating exception
+* debugger reports location & call stack
+
+### 2.11 Remote debugging
+Debugger connects over:
+* Websockets (Node, Chrome)
+* TCP (GDB remote)
+* IDE adapters
+
+Remote debugging works by:
+1. Process starts with debugger server
+2. IDE connects using a protocol
+3. Breakpoints & control flow work normally
+
+**Example (Node):**
+```
+node --inspect=0.0.0.0:9229
+```
+IDE connects to port 9229
+
+### 2.12 Why debugger slow programs down
+* VM must maintain extra metadata (symbols, maps)
+* JIT optimization is disabled or downgraded
+* Pausing/resuming introduces sync points
+* Breakpoints insert overhead
+* Source maps require lookup
+
+This is why production debugging is slow vs. development mode
+
+### 2.13 Time-travel debugging (advanced)
+Modern debuggers (Chrome, replay.io, LLDB) allow:
+* reverse stepping
+* replaying execution
+* examining past states
+
+This works by recording:
+* all inputs
+* nondeterministic events
+* memory writes
+
+Replay systems record the entire execution log. This is advanced but useful to know exists.
+
+### 2.14 Debugger vs Profier vs Tracer (differences)
+| Tool | Purpose |
+|------|---------|
+| Debugger | Pause & inspect execution flow |
+| Profiler | Measure CPU/heap usage over time |
+| Tracer | Logs every instruction or event, no pause |
+| Instrumenter | Injects logs or counters into code |
+
+Debuggers lets you stop and inspect; profilers measure performance.
+
+### 2.15 How IDEs (VS Code, Jetbrains) talk to debuggers
+VS Code uses:
+* **Debug Adapter Protocol (DAP)**
+* Adapter translates IDE commands -> runtime debugger commands
+
+**Example:**
+```
+VS Code -> Adapter -> Node Inspector Protocol -> Node runtime
+```
+
+### 2.16 Why debugging is deterministic (usually)
+* Program pause stops the world
+* No new events are processed
+* No code runs unless you resume
+
+This makes debugging repeatable.
+
+Exception:
+* multi-threaded programs
+* race conditions
+* timing-sensitive code
+
+## Part 4: Hands-on Debugging
+We will use Node.js examples, and the concepts apply to all debuggers (Go, Python, Java, C++ etc)
+
+### Step 1: Create a simple file.
+> Check out: basic_example.js
+
+### Step 2: Run the Node's built-in debugger
+Node has built-in inspector. Run:
+```
+node --inspect-brk index.js
+```
+What this does:
+* `--inspect` opens a debug Websocket on port 9229
+* `--inspect-brk` also breaks before executing the first line
+
+You'll see:
+```bash
+Debugger listening on ws://127.0.0.1:9229/...
+```
+
+### Step 3: Open Chrome Devtools as a debugger
+Open this in Chrome: `chrome://inspect`. You now have a full GUI debugger
+
+### Step 4: Learn Breakpoints in practice
+In the source panel:
+1. Open `index.js`
+2. Click next to the line numbers to set breakpoints
+
+Example:
+* Breakpoint at `return a + b`
+* Breakpoint at `console.log(...)`
+
+Now hit **Resume** (play button) and watch the debugger stop.
+
+### Step 5: Step Through Execution
+When debugger stops, try these:
+
+* **Step Over (F10)**: Executes current line but doesn't go inside functions.
+* **Step Into (F11)**: Goes inside called functions (eg. inside `add` when hitting `double`)
+* **Step Out(Shift+F11)**: Finish current function and return to the caller.
+
+This gives you initution for call stacks + execution flow.
+
+### Step 6: Inspect Variables + Scope
+Pause at the `add()` function. Look at right panel:
+
+**Locals**
+```
+a: 5
+b: 5
+```
+
+**Scope Chain**
+* Local scope
+* Closure scope
+* Module scope
+* Global scope
+
+**Hover Inspection**
+
+Hover over `n`, `a` or `b` -> Devtools shows values inline. This demonstrates how debuggers read memory values.
