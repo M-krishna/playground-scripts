@@ -798,3 +798,149 @@ If you set a breakpoint inside DevTools, V8 replaces instruction #1 with a **Deb
 * Pausing the VM thread
 * Allowing the debugger to inspect scope/variables
 * Restoring original bytecode upon resume
+
+## 3B - How Debuggers Attach to a Process
+Node debugging uses the **V8 Inspector Protocol**, the same protocol Chrome uses to debug Chromium.
+
+### 3B-1: When you run
+```
+node --inspect-brk app.js
+```
+
+Node:
+1. Starts V8 in debug mode
+2. Opens a **WebSocket server** on port 9229
+3. Pauses the program at the first line
+4. Waits for a debugger (Chrome/VS Code) to connect.
+
+### 3B-2: Chrome DevTools connects via WebSocket
+You can try this manually:
+
+**Step 1: Start Node**
+```
+node --inspect-brk test.js
+```
+You'll see:
+```
+Debugger listening on ws://127.0.0.1:9229/abcd1234...
+```
+This is literally a WebSocket endpoint.
+
+**Step 2: Connect manually**
+You can open Chrome:
+```
+chrome://inspect
+```
+Chrome connects via WebSocket and sends JSON messages like:
+```
+{
+    "id": 1,
+    "method": "Debugger.setBreakpointByUrl",
+    "params": {
+        "lineNumber": 20,
+        "url": "file://app.js"
+    }
+}
+```
+
+Node responds:
+```
+{
+    "id": 1,
+    "result": { ... }
+}
+```
+
+### 3B-3: When a breakpoint hits
+Node sends:
+```
+{
+    "method": "Debugger.paused",
+    "params": {
+        "callFrames": [...],
+        "reason": "breakpoint"
+    }
+}
+```
+Then the debugger UI shows:
+* call stack
+* variables
+* scope
+* file + line
+* code preview
+
+### Quick hands-on
+Make a toy script:
+```
+let x = 1;
+let y = 2;
+console.log(x + y);
+```
+Start:
+```
+node --inspect-brk index.js
+```
+Open Chrome DevTools -> look at the "Network" tab of DevTools -> you'll see WebSocket frames exchanging debugger messages in real time.
+
+## 3C - How Source Maps Work (TS -> JS)
+You write Typescript:
+```
+const a: number = 10;
+console.log(a);
+```
+It compiles to JS:
+```
+"use strict"
+var a = 10;
+console.log(a);
+//# sourceMappingURL=index.js.map
+```
+
+## 3C-1: What is a source map file?
+`index.js.map` looks like:
+```
+{
+    "version": 3,
+    "file": "index.js",
+    "sources": ["index.ts"],
+    "mappings": "AAAA,IAAMA,CAAC,GAAG,KAAK;AACnB,OAAO,CAAC,GAAG,CAAC,CAAC"
+}
+```
+It contains:
+* The original typescript source lines
+* Offset -> line/column mapping
+* Generated JS -> original TS mapping
+
+Debuggers use this to show you Typescript lines **even though JavaScript is executing**
+
+### 3C-2: Hands-on
+Run:
+```
+tsc --sourceMap
+node --inspect-brk dist/index.js
+```
+Open Chrome -> you'll see:
+* Breakpoints set in Typescript
+* Debugger pauses correctly
+* Variables shown as TS variables
+* Line numbers match your TS code
+
+Behind the scenes:
+* V8 hits breakpoint in JS
+* Debugger checks source map
+* Maps it back to TS
+* UI shows TS file
+
+### Summary of 3C
+Source maps are a **lookup table** converting:
+```
+generated JS location -> original TypeScript location
+```
+They allow:
+* debugging TS
+* debuggin minified JS
+* debugging bundled code
+* accurate stack traces
+
+## 3D - How Async Debugging Works Internally
+The async model is trickier.
