@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pooling_demo_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pooling_demo
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pooling_demo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
