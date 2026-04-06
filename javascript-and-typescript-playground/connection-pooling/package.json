@@ -1,0 +1,17 @@
+{
+  "name": "connection-pooling",
+  "version": "1.0.0",
+  "description": "Learning connection pooling from scratch with Node.js and PostgreSQL",
+  "main": "src/naive.js",
+  "scripts": {
+    "naive": "node src/naive.js",
+    "pool": "node src/pool.js",
+    "benchmark": "node src/benchmark.js",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres"
+  },
+  "dependencies": {
+    "pg": "^8.13.3"
+  }
+}

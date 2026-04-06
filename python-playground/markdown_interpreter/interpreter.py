@@ -10,9 +10,13 @@ from __future__ import annotations
 ########## START OF INLINE LEVEL NODES FOR AST ###########
 ########## END OF INLINE LEVEL NODES FOR AST #############
 
+def parse_heading(heading_line: str):
+    pass
+
 def parse_blocks(line: str):
     if line.startswith('#'):
         print('heading')
+        parse_heading(line)
     elif line.strip() == '':
         print('empty line')
     else:
