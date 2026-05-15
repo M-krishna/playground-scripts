@@ -1,0 +1,1 @@
+Theorem easy_1: forall P : Prop, P -> P.
