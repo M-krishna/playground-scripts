@@ -968,3 +968,209 @@ This is the most important question. And the honest answer is:
 These two questions -- *"what is my goal?"* and *"what do I have?"* -- are the entire thought process of proving things in Coq.
 
 Every single proof we do from now on, I want you to ask those two questions before touching any tactic. That habit is what makes someone good at this.
+
+## Disjunction -- OR
+OR is simple.
+
+*"It is raining OR it is snowing"*
+
+For this to be true, **at least one part must be true**. Not necessarily both. Just one is enough.
+
+* Raining ✓, Snowing ✗ → the whole thing is true
+* Raining ✗, Snowing ✓ → the whole thing is true
+* Raining ✓, Snowing ✓ → the whole thing is true
+* Raining ✗, Snowing ✗ → the whole thing is false
+
+### How Do You Prove an OR statement?
+What evidence would convince you that *"it is raining OR it is snowing"* is true?
+
+You just need **one piece of evidence**. Either:
+* Evidence that it is raining OR
+* Evidence that it is snowing
+
+You don't need both. You just pick whichever one you can prove and provide that.
+
+So a proof of **P OR Q** means you either:
+* Have a proof of P and you're going with that OR
+* Have a proof of Q and you're going with that
+
+### How Coq writes OR
+In Coq, OR is written as:
+```coq
+P \/ Q
+```
+The `\/` symbol is just Coq's way of writing OR. Read it as *"P or Q"*.
+
+### New Tactics for OR
+Just like AND, OR has two situations:
+1. When OR is your **goal** -- you need to **produce** an OR
+2. When OR is a **hypothesis** -- you need to **use** an OR
+
+### Situation 1 -- Proving OR -- `left` or `right`
+If your goal is:
+```
+============================
+P \/ Q
+```
+You need to pick a side. Which one you can prove?
+
+If you can prove P, you say:
+```coq
+left.
+```
+This tells Coq *"I'm going with the left side."* The goal becomes just P.
+
+If you can prove Q, you say:
+```coq
+right.
+```
+This tells Coq *"I'm going with the right side"*. The goal becomes just Q.
+
+### Situation 2 -- Using OR -- `destruct`
+If you have something like:
+```
+proof_of_PorQ : P \/ Q
+```
+You know at least one of P or Q is true. But you don't know **which one**. So you have to handle **both possibilities**.
+
+The tactic `destruct` handles this:
+```coq
+destruct proof_of_PorQ as [proof_of_P | proof_of_Q].
+```
+Notice the difference from AND:
+* AND used `[proof_of_P proof_of_Q]` -- **space** between names -- because you get both pieces at once.
+* OR uses `[proof_of_P | proof_of_Q]` -- **pipe** between names -- because you get two separate **cases**.
+
+After this Coq gives you **two separate goals** -- one for each case:
+
+**Case 1 --** assuming P is the true one:
+```
+proof_of_P : P
+============================
+(whatever you need to prove)
+```  
+
+**Case 2 --** assuming Q is the true one:
+```
+proof_of_Q : Q
+============================
+(whatever you need to prove)
+```
+You prove the goal in each case separately. Both cases must work.
+
+### The Theorem
+```coq
+Theorem easy_4 : forall P Q : Prop, P /\ Q -> P \/ Q.
+```
+Plain English:
+> *"If P and Q are both true, then P or Q is true"*.
+
+Obvious -- if you have both, you certainly have at least one. But let's prove it.
+
+### Step by step
+
+**Start**
+
+**Goal:**
+```
+============================
+forall P Q : Prop, P /\ Q -> P \/ Q
+```
+
+<hr>
+
+`intros`
+
+Things being handed to us:
+1. `P` - a proposition
+2. `Q` - a proposition
+3. `P /\ Q` - proof that both are true
+
+```coq
+intros P Q proof_of_PandQ.
+```
+Goal becomes:
+```
+P : Prop
+Q : Prop
+proof_of_PandQ : P /\ Q
+============================
+P \/ Q
+```
+
+<hr>
+
+`destruct`
+
+We have `proof_of_PandQ`. Let's open it up.
+```coq
+destruct proof_of_PandQ as [proof_of_P proof_of_Q].
+```
+Goal becomes:
+```
+P : Prop
+Q : Prop
+proof_of_P : P
+proof_of_Q : Q
+============================
+P \/ Q
+```
+
+<hr>
+
+### Think before Typing
+Our goal is `P \/ Q`. We need to pick a side.
+
+Do we have evidence of P? Yes -- `proof_of_P`. Do we have evidence of Q? Yes -- `proof_of_Q`.
+
+We can go either way. Let's go left -- P.
+
+<hr>
+
+`left` and `exact`
+```coq
+left.
+```
+Goal becomes:
+```
+============================
+P
+```
+Now just:
+```coq
+exact proof_of_P.
+```
+Done.
+
+### The Full Proof
+```coq
+Theorem easy_4 : forall P Q : Prop, P /\ Q -> P \/ Q.
+Proof.
+  intros P Q proof_of_PandQ.
+  destruct proof_of_PandQ as [proof_of_P proof_of_Q].
+  left.
+  exact proof_of_P.
+Qed.
+```
+
+### One Thing to Notice
+We could have also written `right` and used `proof_of_Q`. Both work. In real proofs sometimes only one side works -- you have to look at what you have and pick the side you can actually prove.
+
+### Updated Connective Table
+| Connective | When it's you GOAL | When it's your HYPOTHESIS |
+|------------|--------------------|----------------|
+| `P /\ Q` | `split` into two goals | `destruct` into two pieces with *space* |
+| `P \/ Q` | `left` or `right` | `destruct` into two cases with *pipe* |
+| `P -> Q` | `intros` | `apply` it |
+| `forall X, ...` | `intros` | `apply` it |
+
+### Updated Tactics Table
+| Tactic | What it does |
+|--------|--------------|
+| `intros` | Names things handed to you in the goal |
+| `exact` | Points at something you already have |
+| `apply` | Uses a function and reduce the goal |
+| `split` | Breaks an AND goal into two goals |
+| `destruct` | Opens up AND or OR hypothesis into pieces or cases |
+| `left` | Choose left side when goal is OR |
+| `right` | Choose right side when goal is OR |
