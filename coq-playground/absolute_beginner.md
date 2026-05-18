@@ -1174,3 +1174,166 @@ We could have also written `right` and used `proof_of_Q`. Both work. In real pro
 | `destruct` | Opens up AND or OR hypothesis into pieces or cases |
 | `left` | Choose left side when goal is OR |
 | `right` | Choose right side when goal is OR |
+
+## Negation -- NOT
+Plain English first.
+
+NOT is simple on the surface.
+
+*"It is NOT raining"*
+
+This just means the statement is **false**. There is no evidence for it.
+
+### But Wait -- What Does NOT Mean as a PROOF?
+Here is where it gets interesting. We always ask -- *what is the evidence?*
+
+What would convince you that *"it is NOT raining"* is true?
+
+Think about it. You'd want to show that *"if it were raining, something impossible would happen."* In other words:
+> *"Assuming it IS raining leads to a contradiction."*
+
+A **contradiction** means you can prove something that is **absolutely impossible**. Something that can never have any evidence. Ever.
+
+In Coq that impossible thing has a name -- `False`.
+
+`False` is a special proposition in Coq that has **no proof**. Nobody can ever produce evidence for it. It represents an absolute impossibility.
+
+<hr>
+
+### So NOT is actually an Implication
+Here is the key insight:
+> `~P` in Coq actually means `P -> False`
+
+Read that as: *"assuming P leads to impossibility"*
+
+In other words -- *"if P were true, we could prove something impossible -- therefore P cannot be true"*
+
+So when you see `~P` in Coq, mentally replace it with `P -> False`. They are literally the same thing. Coq defines `~P` as just shorthand for `P -> False`.
+
+<hr>
+
+### A New Tactic -- `contradiction`
+Sometimes when working with negation you end up in a situation where you have:
+```
+proof_of_P: P
+proof_of_notP: ~P
+```
+You have both P and NOT P at the same time. That is a contradiction -- an impossible situation. And in logic, from an impossible situation, you can prove **anything at all**.
+
+The tactic `contradiction` says:
+> *"I have both P and ~P -- this is impossible -- therefore the goal is proven"*
+
+You don't even need to look at what the goal is. Contradiction closes it immediately.
+
+<hr>
+
+### The Theorem
+```coq
+Theorem easy_5 : forall P : Prop, P /\ ~P -> False.
+```
+Plain English:
+> *"If P is true AND P is not true at the same time -- that is impossible"*
+
+This is just saying a contradiction is impossible. Let's prove it.
+
+<hr>
+
+### Step by step
+
+**Start**
+
+Goal:
+```
+============================
+forall P : Prop, P /\ ~P -> False
+```
+
+<hr>
+
+`intros`
+
+Things being handed to us:
+1. `P` -- a proposition
+2. `P /\ ~P` -- proof of both P and NOT P
+
+```coq
+intros P proof_of_PandNotP.
+```
+Goal becomes:
+```
+P : Prop
+proof_of_PandNotP : P /\ ~P
+============================
+False
+```
+
+<hr>
+
+`destruct`
+
+Open up the AND hypothesis:
+```coq
+destruct proof_of_PandNotP as [proof_of_P proof_of_notP].
+```
+Goal becomes:
+```
+P : Prop
+proof_of_P : P
+proof_of_notP : ~P
+============================
+False
+```
+
+<hr>
+
+### Think before Typing
+Look at what we have:
+* `proof_of_P` -- evidence that P is true
+* `proof_of_notP` -- evidence that P is NOT true
+
+These two things cannot both exist. That is a contradiction. So we use:
+```coq
+contradiction.
+```
+
+Coq sees both `proof_of_P` and `proof_of_notP` in the hypothesis, recognizes the contradiction, and closes the goal immediately.
+
+<hr>
+
+### The Full Proof
+```coq
+Theorem easy_5 : forall P : Prop, P /\ ~P -> False.
+Proof.
+  intros P proof_of_PandNotP.
+  destruct proof_of_PandNotP as [proof_of_P proof_of_notP].
+  contradiction.
+Qed.
+```
+
+<hr>
+
+### One More Thing -- `unfold not`
+Sometimes Coq doesn't automatically simplify `~P` into `P -> False` for you visually. In those cases you can explicitly unfold the definition:
+```coq
+unfold not.
+```
+This just tells Coq -- *"replace `~P` with `P -> False` so I can see what I'm working with"*
+
+It doesn't change anything mathematically. It just makes the goal more readable.
+
+<hr>
+
+### Updated Connectives Table
+| Connective | When it's your GOAL | When it's a HYPOTHESIS |
+|------------|---------------------|------------------------|
+| `P /\ Q` | `split` into two goals | `destruct` into two pieces with space |
+| `P \/ Q` | `left` or `right` | `destruct` into two cases with pipe |
+| `P -> Q` | `intros` | `apply` it |
+| `forall x, ...` | `intros` | `apply` it |
+| `~P` | `intros` then prove `False` | `contradiction` if you also have `P` |
+
+### The Key Ideas From This Section
+1. `False` is a proposition in Coq that can never be proven
+2. `~P` is just shorthand for `P -> False`
+3. If you have both `P` and `~P` you have a contradiction and can prove anything
+4. `contradiction` closes any goal when you both `P` and `~P`
