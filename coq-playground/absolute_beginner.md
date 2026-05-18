@@ -1337,3 +1337,229 @@ It doesn't change anything mathematically. It just makes the goal more readable.
 2. `~P` is just shorthand for `P -> False`
 3. If you have both `P` and `~P` you have a contradiction and can prove anything
 4. `contradiction` closes any goal when you both `P` and `~P`
+
+## Biconditional -- IF AND ONLY IF
+Plain English First.
+
+You've seen this in everyday language:
+
+*"I will go to the party if and only if you go."*
+
+This means **two things at once:**
+* If you go -> I will go
+* If I go -> you went
+
+Both directions must hold. Not just one. **Both**.
+
+This is different from regular implication which only goes **one way**.
+
+* Implication `P -> Q` -- only goes from P to Q
+* Biconditional `P <-> Q` -- goes **both ways**
+
+<hr>
+
+### How Do You PROVE a Biconditional?
+Since it's two implications at once, you need to prove **both directions**:
+1. Prove P -> Q
+2. Prove Q -> P
+
+That's it. A proof of `P <-> Q` is just **two proofs** -- one for each direction.
+
+<hr>
+
+### How Coq Writes Biconditional
+In Coq, IF AND ONLY IF is written as:
+```coq
+P <-> Q
+```
+Read it as *"P if and only if Q."*
+
+<hr>
+
+### Tactics for Biconditional
+Again two situations:
+
+**Situation 1: Proving Biconditional -- `split`**
+
+If your goal is:
+```
+============================
+P <-> Q
+```
+You need to prove both directions. Just like AND, you use `split`:
+```coq
+split.
+```
+This gives you two goals:
+
+**Goal 1:**
+```
+============================
+P -> Q
+```
+**Goal 2:**
+```
+============================
+Q -> P
+```
+You prove each direction separately.
+
+**Situation 2 -- Using Biconditional -- `destruct`**
+
+If you **have** something like:
+```
+proof_of_PiffQ : P <-> Q
+```
+You can open it up into its two directions:
+```coq
+destruct proof_of_PiffQ as [proof_of_PtoQ proof_of_QtoP].
+```
+Now you have both implications separately and can use them however you need.
+
+<hr>
+
+### The Theorem
+```coq
+Theorem easy_6 : forall P Q : Prop, (P <-> Q) -> (Q <-> P).
+```
+Plain English:
+> *"If P if and only if Q then Q if and only if P."*
+
+Biconditional is symmetric -- if it works both ways between P and Q, it works both ways between Q and P too. Obvious, but let's prove it carefully.
+
+<hr>
+
+### Step by step
+
+**Start**
+
+Goal:
+```
+============================
+forall P Q : Prop, (P <-> Q) -> (Q <-> P)
+```
+
+<hr>
+
+`intros`
+
+Things being handed to us:
+1. `P` -- a proposition
+2. `Q` -- a proposition
+3. `P <-> Q` -- proof of biconditional
+
+```coq
+intros P Q proof_of_PiffQ.
+```
+Goal becomes:
+```
+P : Prop
+Q : Prop
+proof_of_PiffQ : P <-> Q
+============================
+Q <-> P
+```
+
+<hr>
+
+`destruct`
+
+Open up the biconditional hypothesis into its two directions:
+```coq
+destruct proof_of_PiffQ as [proof_of_PtoQ proof_of_QtoP].
+```
+Goal becomes:
+```
+P : Prop
+Q : Prop
+proof_of_PtoQ : P -> Q
+proof_of_QtoP : Q -> P
+============================
+Q <-> P
+```
+Now we have both directions separately.
+
+<hr>
+
+### Think Before Typing
+Our goal is `Q <-> P`. We need to prove both directions:
+1. Q -> P -- we already have this as `proof_of_QtoP`
+2. P -> Q -- we already have this as `proof_of_PtoQ`
+
+Let's split and handle each one.
+
+<hr>
+
+`split`
+```coq
+split.
+```
+Two goals:
+
+**Goal 1:**
+```
+============================
+Q -> P
+```
+**Goal 2:**
+```
+============================
+P -> Q
+```
+
+<hr>
+
+**Goal 1 -- `exact`**
+
+We need Q -> P. We have **exactly** that -- `proof_of_QtoP`:
+```coq
+exact proof_of_QtoP.
+```
+Done.
+
+<hr>
+
+**Goal 2 -- `exact`**
+
+We need P -> Q. We have **exactly** that -- `proof_of_PtoQ`:
+```coq
+exact proof_of_PtoQ.
+```
+Done.
+
+<hr>
+
+### The Full Proof
+```coq
+Theorem easy_6 : forall P Q : Prop, (P <-> Q) -> (Q <-> P).
+Proof.
+  intros P Q proof_of_PiffQ.
+  destruct proof_of_PiffQ as [proof_of_PtoQ proof_of_QtoP].
+  split.
+  - exact proof_of_QtoP.
+  - exact proof_of_PtoQ.
+Qed.
+```
+
+### The Complete Connectives Table
+We now have all the connectives. Here is the complete map:
+| Connective | Meaning | When it's your GOAL | When it's a HYPOTHESIS |
+|------------|---------|---------------------|------------|
+| `P -> Q` | If P then Q | `intros` | `apply` it |
+| `P /\ Q` | P and Q | `split` | `destruct` with space |
+| `P \/ Q` | P or Q | `left` or `right` | `destruct with pipe |
+| `~P` | Not P | `intros` then prove `False` | `contradiction` |
+| `P <-> Q` | P iff Q | `split` | `destruct` with space |
+| `forall x, ...` | For all x | `intros` | `apply` it |
+
+Keep this table in your head. This is your **complete toolkit** for propositional logic in Coq.
+
+Notice a beautiful pattern -- `split` and `destruct` keep showing up. That's not a coincidence:
+* `split` always **breaks something into parts** when it's your goal
+* `destruct` always **opens something up into parts** when it's a hypothesis
+
+Same idea, two directions.
+
+We have now covered all the connectives. This means you have everything you need for **propositional logic** in Coq.
+
+The next possible items would be: natural numbers, induction and deeper math.
