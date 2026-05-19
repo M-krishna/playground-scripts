@@ -1563,3 +1563,31 @@ Same idea, two directions.
 We have now covered all the connectives. This means you have everything you need for **propositional logic** in Coq.
 
 The next possible items would be: natural numbers, induction and deeper math.
+
+## How to read a theorem before touching the keyboard
+Before writing a single tactic, do this every time:
+
+* Step 1 -- Read what you're given
+* Step 2 -- Read what you must produce
+* Step 3 -- Ask: Is there more than one way the situation could be?
+
+**For example, let's apply this to a theorem.**
+```
+(P \/ Q) -> (P -> R) -> (Q -> R) -> R
+```
+**what you're given:**
+* `proof_of_PorQ` -- P is true, or Q is true. You don't know which.
+* `PR` -- if P is true, you can get R
+* `QR` -- if Q is true, you can get R
+
+**What you must produce: R**
+
+**Is there more than one way the situation could be?**
+
+Yes -- and this is the key insight.
+
+`proof_of_PorQ` says *either P or Q* -- but you don't know which one. So you have **two possible situations**:
+* Situation 1: P is true -> use `PR` to get R
+* Situation 2: Q is true -> use `QR` to get R
+
+Either way you get R. But you have to handle **both cases separately**.
