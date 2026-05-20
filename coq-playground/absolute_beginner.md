@@ -1591,3 +1591,309 @@ Yes -- and this is the key insight.
 * Situation 2: Q is true -> use `QR` to get R
 
 Either way you get R. But you have to handle **both cases separately**.
+
+## Natural Numbers in Coq -- Built From Nothing
+**The core question: what even is a number?**
+
+You've known numbers your whole life. But Coq doesn't know anything. It needs you to *define* what a number is from scratch.
+
+So here's a question: what is the minimum amount of information needed to describe all natural numbers?
+
+Think about the natural numbers: 0,1,2,3,4,....
+
+Notice two things:
+1. There is a **starting point** -- zero
+2. Every other number is just **"one more than" some other number**
+
+That's it. That's all you need. 1 is "one more than zero". 2 is "one more than one more than zero". 3 is "one more than one more than one more than zero".
+
+This idea has a name -- it's called **Peano arithmetic**, after the mathematician Giuseppe Peano.
+
+<hr>
+
+### How Coq defines natural numbers
+```coq
+Inductive nat: Type :=
+    | 0: nat
+    | S: nat -> nat.
+```
+Let's read this in plain English before anything else.
+* `nat` is the name for the type of natural numbers
+* `0` means zero -- it is a natural number, full stop
+* `S` means "successor of" -- one more than. It takes a natural number and produces the next one.
+
+So the numbers look like this:
+| Math | Coq |
+|------|-----|
+| 0 | `0` |
+| 1 | `S 0` |
+| 2 | `S (S 0)` |
+| 3 | `S (S (S 0))` |
+
+Every number is just a tower of `S`s sitting on top of `0`.
+
+### Why does this matter?
+Because now *you can prove things about all numbers* -- by reasoning about this structure. A number is either `0`, or it is `S` of something smaller. That's the only two cases that exist.
+
+That idea -- that there are exactly two cases, and the second one refers back to something smaller -- is what makes **induction** possible.
+
+## Induction -- From Real Life to Coq
+**A real life analogy first**
+
+Imagine an infinite row of dominoes streching forward forever.
+
+You want to prove that **every single domino will fall**.
+
+You can't push each one individually -- there are infinitely many. But you can make two observations:
+1. **The first domino falls** -- you push it yourself
+2. **If any domino falls, the next one will fall too** -- because of how they're spaced.
+
+Those two facts together gurantee every domino falls. Every single one, forever, no matter how far down the line.
+
+That's induction.
+
+<hr>
+
+### In Math
+Say you want to prove some statement is true for every natural number. Call the statement `P(n)`.
+
+You can't check every number individually -- there are infinitely many. But if you can show:
+1. **Base case:** `P(0)` is true
+2. **Inductive step:** if `P(n)` is true, then `P(n + 1)` is true
+
+Then `P(n)` is true for every number. Here's why:
+* You know `P(0)`✓
+* Since `P(0)`, you get `P(1)` ✓
+* Since `P(1)`, you get `P(2)` ✓
+* Since `P(2)`, you get `P(3)` ✓
+* ...forever
+
+The base case is pushing the first domino. The inductive step is the spacing gurantee.
+
+<hr>
+
+### A Concrete Math Example
+Let's prove that `0 + n = n` for every natural number `n`.
+
+**Base case -- n is 0**:
+
+Is `0 + 0 = 0`? Yes, obviously.
+
+**Inductive step -- assume it's true for n, prove it for n+1:**
+
+Assume `0 + n = n`. Now consider `0 + (n+1)`
+
+By how addition works, `0 + (n+1) = (0 + n) + 1`. And since we assumed `0 + n = n`, this becomes `n + 1`.
+
+So `0 + (n+1) = n+1`
+
+Both case handled -- the statement is true for every number.
+
+<hr>
+
+### The Crucial Thing About The Inductive Step
+Notice you don't prove the inductive step from scratch. You get to **assume it's already true for n** -- that assumption is called **induction hypothesis**. You just have to show the next step follows from it.
+
+This is what makes induction powerful. You're not proving each case independently. You're proving a chain reaction.
+
+<hr>
+
+### How this maps to Coq's `nat`
+Remember the two cases for `nat`:
+* `0` -- zero
+* `S n` -- one more than `n`
+
+Induction in Coq matches this exactly:
+* **Base case**: prove your statement for `0`
+* **Inductive step**: assume your statement is true for some `n`, prove it for `S n`
+
+The tactic that does this simply:
+```coq
+induction n.
+```
+When you write that, Coq splits your goal into exactly those two cases. You handle them one at a time, just like you did with `destruct` for **OR**.
+
+<hr>
+
+### One more thing before we write code
+In the inductive step, after you write `induction n`, Coq automatically puts the **induction hypothesis** into your hypothesis for you. It will look something like:
+```
+IH: P n
+```
+Meaning "assume this statement is already true for n." You job is just to use it to prove it for `S n`. 
+
+## The `simpl` Tactic -- Explanation from scratch
+
+**First -- what is computation?**
+
+Before `simpl` makes sense, you need to understand what Coq considers "computation".
+
+Think about a vending machine. You press button B3. The machine doesn't need to *think* -- it just mechanically follows a rule: B3 is always a bag of chips. No judgement involved. No creativity. Just a fixed rule applied automatically.
+
+Coq has the same idea. Some things in Coq are defined as pure mechanical rules. Given a specific input, there is exactly one correct output, always, no thinking required.
+
+<hr>
+
+### How addition is defined in Coq
+Remember how `nat` has exactly two cases -- `0` and `S n` ?
+
+Addition is defined by following that same structure. Here is what it looks like:
+```coq
+Fixpoint add (n m: nat): nat :=
+  match n with
+  | 0 => m
+  | S n' => S (add n' m)
+  end.
+```
+Read it in plain English:
+* If the first number is `0` -- just return `m`. Zero plus anything is that thing.
+* If the first number is `S n'` -- meaning "one more than n" -- return `S (add n' m)`. Peel off one `S`, add the rest, put the `S` back.
+
+Let's trace through `2 + 3` to make it concrete.
+```
+add (S (S 0) S (S (S 0)))
+= S (add (S 0) (S (S (S 0))))   <- peel one S off the first number
+= S (S (add 0 (S (S (S 0)))))   <- peel another S
+= S (S (S (S (S 0))))           <- first number is 0, just return second
+= 5
+```
+This is pure mechanical symbol shuffling. No arithmetic intution needed. Just rules applied repeatedly until nothing is left to do.
+
+<hr>
+
+### What `simpl` does
+`simpl` tells Coq: **run the computation. Apply all the mechanical rules until you can't anymore. Show me what's left.**
+
+It's like pressing fast forward on that mechanical process above. Coq traces through the definition, peels of all the `S`s, follows the rules, and hands you the simplified result.
+
+Real world analogy: imagine you have a receipe that says "fold the dough, then fold it again, then fold it again." `simpl` is a machine that just...does all the folding instantly and hands you the result. You don't watch each step -- you just get the final dough.
+
+<hr>
+
+### What `simpl` does NOT do
+This is important.
+
+`simpl` only does **mechanical computation**. It does not do any logical reasoning. It cannot cross a gap where actual thought is required.
+
+For example -- `simpl` can turn `add (S 0) (S 0)` into `S (S 0)` because that's just following rules. But it cannot prove `n + 0 = n` for all `n` by itself -- because that requires induction, which is reasoning and not computation.
+
+Think of it this way:
+* `simpl` is a calculator -- fast, mechanical, no judgement
+* `induction` is a mathematician -- slow, thoughful, handles infinity
+
+You'll often use both in the same proof. `simpl` cleans things up, and then you do the real reasoning.
+
+<hr>
+
+### One more tactic you need -- `reflexivity`
+Before we write the proof, there's a second small tactic to introduce.
+
+After `simpl` runs and simplifies both side of an equation, you'll often end up with something like:
+```
+n = n
+```
+That's obviously true -- anything equals itself. The tactic that closes the goal is:
+```coq
+reflexivity.
+```
+It does exactly one thing: looks at both sides of an equation, checks they are identical, and closes the goal. That's it.
+
+Real world analogy: imagine someone asks you "is this cup the same as itself?" You don't need to measure it or analyze it. You just say "yes, obviously, it's the same thing." That's `reflexivity`.
+
+### The two new tactics summarized
+| Tactic | What it does |
+|--------|--------------|
+| `induction n` | Splits a goal about a number into two cases -- base case (`0`) and inductive step (`S n`), and puts the induction hypothesis into your hypothesis automatically |
+| `simpl` | Runs mechanical computation -- simplifies expression by following definitions |
+| `reflexivity` | Closes a goal from `X = X` -- both sides are identical |
+
+### The Theorem
+```coq
+Theorem add_0_n: forall n: nat, 0 + n = n.
+```
+In plain English: *zero plus any number n equals n.*
+
+Before writing any tactics -- let's do the reading exercise.
+
+**What are the two cases induction will split this into?**
+
+* So the base case will be `0`
+* The inductive step will be `S n`
+
+**Here is the full theorem:**
+```coq
+Theorem add_0_n: forall n: nat, 0 + n = n.
+Proof.
+  intros n.
+  induction n.
+  - simpl. reflexivity.
+  - simpl. reflexivity.
+Qed.
+```
+
+<hr>
+
+**The base case -- obvious**
+
+Goal was `0 + 0 = 0`. `simpl` ran the computation, got `0 = 0`. `reflexivity` closed it. Clear.
+
+<hr>
+
+**The inductive step**
+
+Your goal was `0 + S n = S n`.
+
+When `simpl` ran, it followed the definition of addition. Remember the rule:
+```
+add 0 m => m
+```
+So `0 + S n` just mechanically becomes `S n`. Goal became `S n = S n`. `reflexivity` closed it.
+
+Notice something -- you had an induction hypothesis sitting in your hypothesis:
+```
+IH: 0 + n = n
+```
+But you didn't even need to use it here. `simpl` was powerful enough to just compute the answer directly.
+
+This won't always be the case. There will be theorems where `simpl` gets you partway but then stops -- and that's exactly when you'll need to reach for the induction hypothesis.
+
+The next theorem is specifically designed to force you to use it:
+
+<hr>
+
+### Next Theorem
+```coq
+Theorem add_n_0: forall n: nat, n + 0 = n.
+```
+
+**Full theorem**
+```coq
+Theorem add_n_0: forall n: nat, n + 0 = n.
+Proof.
+  intros n.
+  induction n.
+  - simpl. reflexivity.
+  - simpl. rewrite IHn. reflexivity.
+Qed.
+```
+Notice a new tactic `rewrite`. We take a look at it:
+
+### The new tactic -- `rewrite`
+This is exactly what `rewrite` does.
+
+Real world analogy: imagine you're editing a document and you do a find-and-replace. You say "wherever you see `n + 0`, replace it with `n`." That's `rewrite`.
+
+You point it at an equation you already have, and it finds that expression in your goal and swaps it out.
+
+The syntax is:
+```coq
+rewrite IH.
+```
+This tells Coq: "take the equation `IH: n + 0 = n`, find `n + 0` in my goal, and replace it with `n`."
+
+After that your goal becomes `S n = S n` -- and you know exactly what closes that.
+
+Add `rewrite` to your tactics cheat sheet:
+| Tactic | What it does |
+|--------|--------------|
+| `rewrite` | Takes an equation `H: A = B` and replaces `A` and `B` in the current goal |
