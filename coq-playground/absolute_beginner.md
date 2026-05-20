@@ -1897,3 +1897,235 @@ Add `rewrite` to your tactics cheat sheet:
 | Tactic | What it does |
 |--------|--------------|
 | `rewrite` | Takes an equation `H: A = B` and replaces `A` and `B` in the current goal |
+
+## Coq Building Blocks -- From Scratch
+
+### `Definition` -- Giving a name to something
+**In math**
+
+In mathematics, you constantly give names to things to avoid repeating yourself.
+
+For example:
+```
+Let x = 5
+Let f(n) = n + 1
+```
+You're not creating anything new or complex. You're just saying "I want to refer to this thing by this name from now on."
+
+**In Programming**
+
+Every language has this. In JavaScript:
+```javascript
+const x = 5;
+const double = (n) => n * 2;
+```
+You're binding a name to a value or a function.
+
+**In Coq**
+
+`Definition` does exactly the same thing. You're giving a name to something -- a value, a function, anything -- as long as it is **not recursive**.
+```coq
+Definition five: nat := S (S (S (S (S 0))))
+```
+This just says "from now on, `five` means `S (S (S (S (S 0))))`
+```coq
+Definition is_zero (n: nat) : bool :=
+  match n with
+  | 0 => true
+  | S _ => false
+  end.
+```
+This defines a function called `is_zero` that takes a number and returns true if it is zero, false otherwise. The `_` means "I don't care what this value is, I'm ignoring it."
+
+**Another Example**
+```coq
+Definition identity (P : Prop) (proof : P) : P := proof.
+```
+This is a function that takes a proposition and a proof of it, and just returns the proof unchanged.s
+
+**The key rule**
+
+`Definition` is for things that are **not recursive**. The moment a function needs to call itself, you must use `Fixpoint` instead.
+
+<hr>
+
+### `Inductive` -- Building a new type from cases
+
+**In math**
+
+When mathematicians define something precisely, they list every possible form it can take.
+
+For example, defining a **binary tree**:
+* A tree is either **empty**
+* Or a **node** containing a value, a left subtree, and a right subtree
+
+Nothing else is a binary tree. The definition is complete and closed.
+
+Or defining **natural numbers** informally:
+* Zero is a natural number
+* If n is a natural number, then n+1 is a natural number
+* Nothing else is a natural number
+
+**In programming**
+
+In languages like Rust or Haskell this is called an **enum** or **algebraic data type**:
+```rust
+enum Shape {
+  Circle(f64),          // a circle with a radius
+  Rectangle(f64, f64)   // a rectangle with width and height
+}
+```
+You're saying: "a Shape is either a Circle or a Rectangle. Nothing else."
+
+**In Coq**
+
+`Inductive` is Coq's way of defining a new type by listing every possible way to build something of that type.
+
+**Example 1 -- Natural numbers:**
+```coq
+Inductive nat : Type :=
+  | 0 : nat
+  | S : nat -> nat.
+```
+In plain English: "A `nat` is either `0` (zero) or `S` applied to another `nat` (one more than something)." Every number ever is covered by these two cases.
+
+**Example 2 -- Booleans:**
+```coq
+Inductive bool : Type :=
+  | true : bool
+  | false : bool.
+```
+In plain English: "A `bool` is either `true` or `false`." Exactly two cases, nothing else.
+
+**Example 3 -- A simple tree:**
+```coq
+Inductive tree : Type :=
+  | Leaf : tree
+  | Node : tree -> nat -> tree -> tree.
+```
+In plain English: "A `tree` is either a `Leaf` (empty), or a `Node` containing a left tree, a number, and a right tree."
+
+**Why the word `Inductive`?**
+
+Because these definitions naturally support **induction**. Every value of an inductive type is built from smaller value of the same type. So you can always reason about them by handling each case -- which is exactly what induction does.
+
+<hr>
+
+### `Fixpoint` -- A function that calls itself
+
+**In math**
+
+Some functions are defined in terms of themselves:
+```
+factorial(0) = 1
+factorial(n) = n x factorial(n-1)
+```
+This works because each call makes the input strictly smaller, and you always eventually hit the base case.
+
+**In programming**
+
+This is recursion:
+```javascript
+function factorial(n) {
+  if (n == 0) return 1;
+  return n * factorial(n - 1);
+}
+```
+
+**In Coq**
+
+`Fixpoint` is used instead of `Definition` whenever a function needs to call itself.
+
+**Example 1 -- Addition:**
+```coq
+Fixpoint add (n m : nat) : nat :=
+  match n with
+  | 0 => m
+  | S n' => S (add n' m)
+  end.
+```
+In plain English: "To add n and m -- if n is zero, return m. If n is one more than n', return one more than (n' + m)." Each recursive call uses `n'` which is strictly smaller than `S n'`.
+
+**Example 2 -- Multiplication:**
+```coq
+Fixpoint mul (n m : nat) : nat :=
+  match n with
+  | 0 => 0
+  | S n' => add m (mul n' m)
+  end.
+```
+In plain English: "To multiply n and m -- if n is zero, return zero. If n is one more than n', return m added to (n' x m)." Multiplication is just repeated addition.
+
+**Example 3 -- Checking if a number is even:**
+```coq
+Fixpoint is_even (n : nat) : bool :=
+  match n with
+  | 0 => true
+  | S 0 => false
+  | S (S n') => is_even n'
+  end.
+```
+In plain English: "Zero is even. One is not even. Anything else -- peel off two and check again."
+
+**Why not just use `Definition`?**
+
+Coq requires you to be explicit about recursion because it needs to verify the function always terminates. Coq checks that every recursive call is made on something is strictly smaller. If you tried to write a recursive function with `Definition`, Coq would reject it.
+
+<hr>
+
+### `Lemma` -- A stepping stone theorem
+
+**In math**
+
+Mathematics use different words for proven statements depending on their role:
+* **Theorem** -- a major result, important on its own
+* **Lemma** -- a smaller result proved specifically as a tool to help prove something bigger
+* **Corollary** -- a result that follows easily and directly
+
+These are not technical distinctions. They are communication tools. A lemma is a mathematicians way of saying "I need to prove this smaller thing first because I'll need it as a tool later".
+
+**In real life**
+
+Imagine you're building a house. Before you can build the roof, you need to build the walls. The walls are not the final goal -- the house is. But you prove the walls are sound before moving on.
+
+A lemma is like the walls. You prove it not because it's the end goal, but because the bigger thing depends on it.
+
+**In Coq**
+
+`Theorem`, `Lemma`, `Example` and `Proposition` are all technically identical in Coq. The difference is purely for human reader.
+
+**Example 1 -- A lemma used to support a bigger proof:**
+
+You already proved this:
+```coq
+Lemma add_n_0: forall n: nat, n + 0 = n.
+```
+This is a lemma because you proved it specifically to use it as a tool inside the proof of `add_comm` (addition is commutative). It's not the main result -- it's a stepping stone.
+
+**Example 2 -- A lemma about successors:**
+```coq
+Lemma succ_add: forall n m: nat, S (n + m) = n + S m.
+```
+In plain English: "One more than (n + m) equals n plus (one more than m)." This looks small and uninteresting on its own -- but you'll need it as a tool inside `add_comm`.
+
+**Example 3 -- Using a lemma inside a proof:**
+```coq
+Theorem add_comm: forall n m : nat, n + m = m + n.
+Proof.
+  (* at some point inside here you will write: *)
+  rewrite add_n_0.
+  (* using the lemma as a tool *)
+```
+
+**The Key Point**
+
+In Coq you can use any previously proved `Theorem` or `Lemma` inside a future proof by name -- just like you use `IHn` for the induction hypothesis. Proved results become tools you can reach for at any time.
+
+### Complete Summary
+| Keyword | What it defines | Recursive? | Real World Analogy |
+|---------|-----------------|------------|------------|
+| `Definition` | A name for a value or simple function | No | Giving a nickname to something |
+| `Inductive` | A new type listed by its possible forms | N/A | A blueprint listing every shape something can take |
+| `Fixpoint` | A recursive function | Yes | A machine that solves a problem by breaking it into smaller versions of itself |
+| `Lemma` | A helper theorem for a bigger result | N/A | A stepping stone -- proved because you'll need it as a tool |
+| `Theorem` | A major proved result | N/A | The final destination you were building toward |
