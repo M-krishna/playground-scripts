@@ -2129,3 +2129,100 @@ In Coq you can use any previously proved `Theorem` or `Lemma` inside a future pr
 | `Fixpoint` | A recursive function | Yes | A machine that solves a problem by breaking it into smaller versions of itself |
 | `Lemma` | A helper theorem for a bigger result | N/A | A stepping stone -- proved because you'll need it as a tool |
 | `Theorem` | A major proved result | N/A | The final destination you were building toward |
+
+## The Theorem
+
+### `add_comm` -- Addition is Commutative
+What we're proving
+```coq
+Theorem add_comm : forall n m : nat, n + m = m + n.
+```
+In plain English: *for any two numbers n and m, it doesn't matter which order you add them -- you always get the same result.*
+
+### Reading exercise first
+Before touching the keyboard -- what are the two cases induction will give you?
+
+We're doing induction on `n`. So:
+* **Base case:** n is `0` -- prove `0 + m = m + 0`
+* **Inductive step:** n is `S n'` -- assume `n' + m = m + n'`, prove `S n' + m = m + S n'`
+
+**Think about what tools you already have**
+
+You have two lemmas already proved:
+* `add_n_0 : forall n : nat, n + 0 = n`
+* `add_0_n : forall n : nat, 0 + n = n`
+
+You will need both.
+
+**Now try the base case first**
+
+Your goal in the base case will be:
+```
+0 + m = m + 0
+```
+Think about this carefully:
+* The left side -- `0 + m` -- what does `simpl` do to it? Remember how addition is defined. When the first argument is `0`, it just returns the second argument. So `simpl` turns `0 + m` into `m`.
+* The right side -- `m + 0` -- can `simpl` handle this? The first argument is `m`, which is unknown. So `simpl` gets stuck here.
+
+After `simpl` your goal will be:
+```
+m = m + 0
+```
+You have a lemma that says exactly that `m + 0 = m`. Which tactic do you use to apply an equation from your toolkit to replace something in the goal?
+
+### Full Theorem
+```coq
+Lemma add_S_comm: forall n m : nat, m + S n = S (m + n).
+Proof.
+  intros n m.
+  induction m.
+  - simpl. reflexivity.
+  - simpl. rewrite IHm. reflexivity.
+Qed.
+
+
+Theorem add_comm: forall n m : nat, n + m = m + n.
+Proof.
+  intros n m.
+  induction n.
+  - simpl. rewrite add_n_0. reflexivity.
+  - simpl. rewrite add_S_comm. rewrite IHn. reflexivity.
+Qed.
+```
+
+**What just happened -- the big picture**
+
+Step back and look at what you just did:
+
+You proved `add_comm` -- a fundamental fact about arithmetic -- from **absolute scratch**. Coq doesn't know addition is commutative until you prove it. You built that fact yourself, piece by piece, using nothing but the definition of natural numbers and logic.
+
+And notice the structure of how you got there:
+```
+add_O_n        — proved earlier
+add_n_O        — proved earlier
+add_S_comm     — proved just now as a lemma
+add_comm       — the final result, built on top of all three
+```
+This is exactly how mathematics works. Big results rest on smaller lemmas, which rest on even smaller ones, all the way down to the foundations.
+
+<hr>
+
+**What you used in the inductive step of `add_comm`**
+```coq
+simpl.       -> peeled off S, goal became S (n + m) = m + S n
+rewrite add_S_comm. -> turned m + S n into S (m + n), goal became S (n + m) = S (m + n)
+rewrite IHn. -> turned n + m into m + n, goal became S (m + n) = S (m + n)
+reflexivity. -> both sides identical, closed
+```
+Every step had a clear reason. Nothing was guesswork.
+
+<hr>
+
+**Where you are now**
+
+You have now covered:
+* Propositional logic -- all connectives, all tactics
+* Natural numbers -- how Coq builds them from scratch
+* Induction -- base case, inductive step, induction hypothesis
+* `simpl`, `rewrite`, `reflexivity`
+* Lemmas as stepping stones
