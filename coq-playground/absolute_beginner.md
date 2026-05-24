@@ -2226,3 +2226,474 @@ You have now covered:
 * Induction -- base case, inductive step, induction hypothesis
 * `simpl`, `rewrite`, `reflexivity`
 * Lemmas as stepping stones
+
+## Lists in Coq -- From Scratch
+
+### What is a list?
+
+**What?**
+
+A list is an ordered collection of elements where **order matters** and **repetition is allowed**.
+
+For example:
+* `[1, 2, 3]` is a list of three numbers
+* `[3, 2, 1]` is a different list -- same elements, different order
+* `[1, 1, 2]` is valid -- repeatition is fine
+
+**Why?**
+
+Lists are one of the most fundamental data structures in all of computer science and mathematics. Almost every program ever written uses lists in some form. In Coq specifically, lists are important because:
+* They are simple enough to define from scratch
+* They are complex enough to need induction to reason about
+* Proving things about lists teaches you patterns that apply to every data structure you'll ever meet
+
+**How?**
+
+Just like `nat` had exactly two cases - `0` and `S n` -- a list has exactly two cases:
+* It is **empty** -- nothing in it
+* It is an **element attached to the front of another list**
+
+That second case is the key insight. A list is not a flat container -- it is **recursive**. A non-empty list is always one element stuck onto the front of a smaller list.
+
+Visually:
+```
+[1, 2, 3]
+= 1 :: [2, 3]
+= 1 :: 2 :: [3]
+= 1 :: 2 :: 3 :: []
+```
+Where `::` means "attach to the front of" and `[]` means the empty list.
+
+### How Coq defines it
+
+**What?**
+```coq
+Inductive list (A : Type) : Type :=
+  | nil : list A
+  | cons : A -> list A -> list A.
+```
+
+**Why each part?**
+
+Let's read every single piece:
+
+`Inductive list (A : Type) : Type`
+* `Inductive` -- we are defining a new type by listing its cases
+* `list` -- the name of the type we're creating
+* `(A : Type)` -- this is new. It means "list works for any type A". A list of numbers, a list of booleans, a list of propositions -- all covered by the same definition. `A` is a placeholder for whatever type you want to store.
+* `: Type` -- list itself is a type
+
+`| nil : list A`
+* `nil` is the empty list -- it contains nothing
+* It is a valid `list A` for any type `A`
+
+`| cons : A -> list A -> list A`
+* `cons` is short for "construct" -- it builds a new list by attaching one element to the front of an existing list.
+* It takes an element of type `A` and an existing `list A`, and produces a new `list A`
+* This is the `::` operation you saw above
+
+**How does this look in practice?**
+```coq
+(* The empty list of natural numbers *)
+Definition empty : list nat := nil.
+
+(* The list [1] *)
+Definition one_item : list nat := cons 1 nil.
+
+(* The list [1, 2, 3] *)
+Definition three_items : list nat := cons 1 (cons 2 (cons 3 nil)).
+```
+Coq actually gives you a nicer notation so you don't have to write `cons` everywhere:
+```coq
+(* These mean exactly the same thing *)
+cons 1 (cons 2 (cons 3 nil))
+1 :: 2 :: 3 :: []
+[1; 2; 3]
+```
+
+### What is `(A : Type)` -- Polymorphism
+
+**What?**
+
+This is called **polymorphism**. It means "works for many types".
+
+**Why?**
+
+Without it you'd need a separate definition for every type:
+```coq
+Inductive list_of_nat ...
+Inductive list_of_bool ...
+Inductive list_of_prop ...
+```
+That's absurd. The structure of a list is the same regardless of what it contains. Polymorphism lets you write the definition once and use it for anything.
+
+**How?**
+
+`A` is a **type parameter** -- a placeholder. When you actually use the list, you fill in what `A` is:
+```coq
+list nat (* a list of natural numbers *)
+list bool (* a list of booleans *)
+list prop (* a list of propositions *)
+```
+Think of it like a box factory. The factory doesn't care what you put in the boxes -- it just knows how to make boxes. `A` is whatever you decide to put inside.
+
+### Three Fundamental List Functions
+Now that we have lists, we need functions to work with them. There are three you'll prove things about:
+
+1. `length` -- **How many elements are in a list?**
+```coq
+Fixpoint length (A : Type) (l: list A) : nat :=
+  match l with
+  | nil => 0
+  | cons _ t => S (length A t)
+  end.
+```
+In plain English:
+* Empty list has length zero
+* A non-empty list has length one more than the length of its tail
+
+The `_` means "I don't care about the head element -- I'm just counting".
+
+`t` stands for **tail** -- everything after the first element.
+
+Example:
+```
+length [1; 2; 3]
+= S (length [2; 3])
+= S (S (length [3]))
+= S (S (S length []))
+= S (S (S 0))
+= 3
+```
+
+2. `append` -- Join two lists together
+```coq
+Fixpoint append (A : Type) (l1 l2 : list A) : list A :=
+  match l1 with
+  | nil => l2
+  | cons h t => cons h (append A t l2)
+  end.
+```
+In plain English:
+* Appending an empty list to l2 gives you l2
+* Appending a non-empty list -- take the head off, append the rest, put the head back
+
+`h` stands for **head** -- the first element.
+
+Example:
+```
+append [1; 2] [3; 4]
+= 1 :: append [2] [3; 4]
+= 1 :: 2 :: append [] [3; 4]
+= 1 :: 2 :: [3; 4]
+= [1; 2; 3; 4]
+```
+Coq uses the notation `++` for append, so `[1; 2] ++ [3; 4]` means the same thing.
+
+3. `reverse` -- Flip a list backwards
+```coq
+Fixpoint reverse (A : Type) (l : list A) : list A :=
+  match l with
+  | nil => nil
+  | cons h t => append A (reverse A t) (cons h nil)
+```
+In plain English:
+* Reversing an empty list gives you an empty list
+* Reversing a non-empty list -- reverses the tail, then append the head at the end.
+
+Example:
+```
+reverse [1; 2; 3]
+= reverse [2; 3] ++ [1]
+= (reverse [3] ++ [2]) ++ [1]
+= ((reverse [] ++ [3]) ++ [2]) ++ [1]
+= (([] ++ [3]) ++ [2]) ++ [1]
+= ([3] ++ [2]) ++ [1]
+= [3; 2] ++ [1]
+= [3; 2; 1]
+```
+
+### Summary so far
+| Concept | What it is | Coq keyword |
+|---------|------------|-------------|
+| List | A recursive structure -- empty or element plus smaller list | `Inductive` |
+| Polymorphism | Works for any type -- `A` is placeholder | `(A : Type)` |
+| `nil` | The empty list | `[]` |
+| `cons` | Attach the element to front of list | `::` |
+| `length` | Count elements | `Fixpoint` |
+| `append` | Join two lists | `++` |
+| `reverse` | Flip a list backwards | `Fixpoint` |
+
+### What comes next
+Now that you understood what lists are and how the three functions, work, you're going to prove things about them. For example:
+* The length of two appended lists equals the sum of their lengths
+* Reversing a list twice gives you the original list back
+
+These proofs will use everything you've learned -- `induction`, `simpl`, `rewrite`, `reflexivity` -- applied to lists instead of numbers.
+
+<hr>
+
+### First List Proof -- Length of Append
+
+**What we're proving**
+```coq
+Theorem length_append : forall (A : Type) (l1 l2: list A),
+  length A (append A l1 l2) = length A l1 + length A l2.
+```
+
+**What?**
+
+In plain English: *the length of two lists joined together equals the length of the first list plus the length of the second list.*
+
+For example:
+```
+length [1; 2] = 2
+length [3; 4; 5] = 3
+length ([1; 2] ++ [3; 4; 5]) = length [1; 2; 3; 4; 5] = 5 = 2 + 3
+```
+
+**Why?**
+
+This is the most fundamental fact about `append` and `length`. It connects two functions together. Almost every bigger proof about lists will need this fact as a tool -- making it a perfect lemma to prove first.
+
+**How?**
+
+Same pattern as always -- induction. But on which variable?
+
+Think carefully. `append` is defined by peeling apart `l1` -- remember its definition:
+```coq
+| nil => l2
+| cons h t => cons h (append A t l2)
+```
+It recurses on `l1`. So `simpl` will be able to make progress when `l1` is `nil` or `cons h t`. That means we should do induction on `l1`.
+
+### Reading Exercise
+Induction on `l1` gives you two cases. But notice -- for lists, the two cases are different from numbers:
+* **Base case:** `l1` is `nil` -- the empty list
+* **Inductive step:** `l1` is `cons h t` -- one element `h` attached to a smaller list `t`
+
+And your induction hypothesis will be about `t` -- the smaller list.
+
+<hr>
+
+### Your proof state after `intros` and `induction l1`
+
+**Base case goal:**
+```
+length A (append A nil l2) = length A nil + length A l2
+```
+
+**Inductive step goal:**
+```
+length A (append A (cons h t) l2) = length A (cons h t) + length A l2
+```
+
+**With induction hyposthesis:**
+```
+IHt : length A (append A t l2) = length A t + length A l2
+```
+
+<hr>
+
+### One thing to notice about `induction` on lists
+When you write `induction l1`, Coq splits into two cases and automatically names things:
+* The head element is called `a` by default
+* The tail is called `l` by default -- but you can name them yourself.
+
+To name them yourself you write:
+```coq
+induction l1 as [| h t IHt].
+```
+Read this as:
+* `|` separates the two cases
+* First case is `nil` -- nothing to name
+* Second case is `cons h t` -- head is `h`, tail is `t`, induction hypothesis is `IHt`
+
+This is the same `as` syntax you used with `destruct` before -- just applied to lists now.
+
+### The Full Theorem
+```coq
+(* length function *)
+Fixpoint length (A : Type) (l : list A) : nat :=
+  match l with
+  | nil _=> 0
+  | cons _ _ t => S (length A t)
+  end.
+  
+Fixpoint append (A : Type) (l1 l2: list A) : list A :=
+  match l1 with
+  | nil _ => l2
+  | cons _ h t => cons A h (append A t l2)
+  end.
+
+
+Theorem length_append : forall (A : Type) (l1 l2: list A),
+  length A (append A l1 l2) = length A l1 + length A l2.
+Proof.
+  intros A l1 l2.
+  induction l1.
+  - simpl. reflexivity.
+  - simpl. rewrite IHl1. reflexivity.
+Qed.
+```
+
+<hr>
+
+### Where are you now
+You have proved:
+* `add_0_n` -- zero plus n equals n
+* `add_n_0` -- n plus zero equals n
+* `add_S_comm` -- helper lemma for commutativity
+* `add_comm` -- addition is commutative
+* `length_append` -- length distributes over append
+
+### Next proof -- reverse of append
+Before we get to proving that reversing twice gives you the original list, you need one stepping stone lemma first:
+```coq
+Lemma reverse_append : forall (A : Type) (l1 l2 : list A),
+  reverse A (append A l1 l2) = append A (reverse A l2) (reverse A l1).
+```
+
+### Full Theorem
+```coq
+Lemma append_nil : forall (A : Type) (l : list A),
+  append A l (nil A) = l.
+Proof.
+  intros A l.
+  induction l as [| h t IHt].
+  - simpl. reflexivity.
+  - simpl. rewrite IHt. reflexivity.
+Qed.
+
+Lemma append_assoc : forall (A : Type) (l1 l2 l3 : list A),
+  append A (append A l1 l2) l3 = append A l1 (append A l2 l3).
+Proof.
+  intros A l1 l2 l3.
+  induction l1 as [| h t Iht].
+  - simpl. reflexivity.
+  - simpl. rewrite Iht. reflexivity.
+Qed.
+
+Lemma reverse_append : forall (A : Type) (l1 l2 : list A),
+  reverse A (append A l1 l2) = append A (reverse A l2) (reverse A l1).
+Proof.
+  intros A l1 l2.
+  induction l1 as [| h t IHt].
+  - simpl. rewrite append_nil. reflexivity.
+  - simpl. rewrite IHt. rewrite append_assoc. reflexivity.
+Qed.
+
+(* Different Theorem *)
+Theorem reverse_reverse : forall (A : Type) (l : list A),
+  reverse A (reverse A l) = l.
+Proof.
+  intros A l.
+  induction l as [| h t IHt].
+  - simpl. reflexivity.
+  - simpl. rewrite reverse_append. simpl. rewrite IHt. reflexivity.
+Qed.
+```
+
+**Where are you now**
+
+You have now completed:
+```
+Propositional logic ✓
+Natural numbers ✓
+Induction ✓
+Lists ✓
+```
+
+**What's next -- Curry-Howard Correspondence**
+
+This is where everything you've done suddenly looks completely different and much deeper.
+
+Remember back at the very beginning -- a proof of `P -> Q` is a function that takes evidence of P and produces evidence of Q?
+
+Curry-Howard says that wasn't just an analogy. It is literally true. Proofs are programs. Propositions are types. The entire logical system you've been working in is secretely a programming language.
+
+## I had a question
+Before proceeding I have a question. In few theorems we've solved, we had a solve a separate Lemma and use it in the main theorem. My question is, while solving the main theorem, how do we get to know that we had solve this sub problem first before tackling the main theorem. I don't think I can figure out the sub problem first. Answer this question first and if possible provide an example.
+
+<hr>
+
+### Way 1 -- Get stuck first, then extract the lemma
+This is the most natural way. You don't figure out the lemma in advance. You just start the proof, get stuck, and the stuck point tells you exactly what lemma you need.
+
+**Example -- `reverse_append**
+
+When you were proving `reverse_reverse`, if you had tried to prove it directly without `reverse_append`, your inductive step after `simpl` would have left you with:
+```
+reverse A (append A (reverse A t) [h]) = h :: t
+```
+You're stuck. `simpl` can't help. `rewrite IHt` can't help directly. But look at what's blocking you -- there's a `reverse` applied to an `append`. You can't simplify that without knowing how `reverse` distributes over `append`.
+
+That stuck point is telling you exactly what lemma you need:
+```coq
+Lemma reverse_append : forall (A : Type) (l1 l2 : list A),
+  reverse A (append A l1 l2) = append A (reverse A l2) (reverse A l1).
+```
+The shape of what's blocking you IS the lemma. You extract it, prove it separately, come back and use it.
+
+**The practical workflow**
+```
+Start main proof
+    ↓
+Get stuck at some goal
+    ↓
+Ask: what fact about my functions would unstick me?
+    ↓
+That fact is your lemma
+    ↓
+Set main proof aside
+    ↓
+Prove the lemma
+    ↓
+Come back and use it
+```
+This is how most mathematicians and Coq programmers actually operate. They don't plan all lemmas upfront. They discover them by getting stuck.
+
+<hr>
+
+### Way 2 -- Read the function definitions carefully upfront
+This is a more experienced skill. Once you know it, you can sometimes predict lemmas before getting stuck.
+
+**The key insight**
+
+Every function you define by recursion has a fixed pattern -- it always recurses on one specific argument. That pattern tells you what facts will be easy to prove and what facts will be hard.
+
+**Example -- `append`**
+```coq
+Fixpoint append (A : Type) (l1 l2 : list A) : list A :=
+  match l1 with
+  | nil _ => l2
+  | cons _ h t => cons A h (append A t l2)
+  end.
+```
+`append` recurses on `l1`. This means:
+* Facts about the LEFT argument of append will be easy -- `simpl` can make progress
+* Facts about the RIGHT argument will be hard -- `simpl` gets stuck
+
+So just from reading the definition you can predict:
+* `append nil l = l` -- easy, `simpl` handles it directly
+* `append l nil = l` -- hard, needs a lemma -- because `nil` is on the right
+
+That's exactly why `append_nil` was needed as a lemma. The definition told you in advance.
+
+**Example -- `reverse`**
+```coq
+Fixpoint reverse (A : Type) (l : list A) : list A :=
+  match l with
+  | nil _ => nil A
+  | cons _ h t => append A (reverse A t) (cons A h (nil A))
+  end.
+```
+`reverse` is defined using `append` internally. So whenever you have `reverse` applied to an `append`, `simpl` won't know how to untangle them -- because that combination isn't directly in any definition. That tells you upfront that you'll need a lemma connecting `reverse` and `append`.
+
+### The honest summary
+| Situation | What to do |
+|-----------|------------|
+| You're new to a problem | Just start. Get stuck. Extract the lemma from the stuck point. |
+| You're experienced | Read function definitions. Notice which arguments they recurse on. Predict hard cases upfront |
+
+Every time you hit a wall in a Coq proof, stop and ask: "what fact about my functions, if I had it, would let me move forward?" That fact is your next lemma.
