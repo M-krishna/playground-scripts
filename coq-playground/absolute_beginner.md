@@ -2903,13 +2903,308 @@ You weren't just doing logic. You were writing programs that happen to be proofs
 
 This is also called the **propositions-as-types** interpretation, or sometimes **proofs-as-programs**. You will see these terms in papers and textbooks -- they all refer to this same correspondence.
 
-### Question to test myself
-Below are few questions to test myself whether I understood the above concepts or not.
+## Curry-Howard Correspondence -- The Complete Picture
 
-**Question 1**
+### Why you should care?
+Before anything else -- why does this matter to you as someone learning to program and reason formally?
 
-Look at this theorem you proved earlier:
-```coq
-Theorem easy_3 : forall P Q : Prop, P /\ Q -> Q /\ P.
+Here is the honest answer.
+
+Most programmers think of two completely separate activities:
+* **Writing code** -- building programs that compute things
+* **Writing proofs** -- verifying that things are correct.
+
+They seem like different worlds. Different notation, different tools, differernt communities.
+
+Curry-Howard says they were never different. They are the same activity viewed from two angles. When you write a program you are -- whether you know it or not -- proving something. When you prove a theorem you are -- whether you know it or not -- writing a program.
+
+This matters pratically because:
+* It means a **type checker is a proof checker** -- when Typescript tells you your types are wrong, it is telling you your logic is wrong.
+
+* It means **writing correct programs and proving theorems are the same skill** -- getting better at one makes you better at the other.
+
+* It means **Coq can be both a programming language and a proof assistant** -- because at the deepest level those are the same thing.
+
+Once this clicks, both programming and logic become clearer. You stop seeing them as two subjects and start seeing them as one.
+
+<hr>
+
+### Where this idea came from
+This correspondence was discovered independently by two people at different times:
+* **Haskell Curry** -- a mathematician who noticed in the 1930s that certain logical systems looked suspiciously like certain type systems in programming languages
+
+* **William Howard** -- a logician who made the connection precise and formal in 1969
+
+Neither of them set out to connect logic and programming. They just followed math and ended up at the same place from different directions.
+
+The correspondence is named after both of them.
+
+<hr>
+
+### The one sentence summary
 ```
-Describe this theorem in purely programming terms. Don't use the words "proof" or "proposition" or "logic". Pretend you're describing it to a programmer who has never heard of Coq.
+Propositions are types.
+Proofs are programs.
+```
+That's it. Everything else is just working out the details of what that means.
+
+<hr>
+
+### Building it from scratch -- Using your own work
+The best way to understand this is not through abstract explanation. It's through things you have already done. So let's go through every concept you've learned and look at it with fresh eyes.
+
+<hr>
+
+**Step 1 -- Your very first theorem**
+```coq
+Theorem easy_1 : forall P : Prop, P -> P.
+Proof.
+  intros P proof_of_P.
+  exact proof_of_P.
+end.
+```
+Forget logic for a moment. Just look at what this does mechanically:
+* It receives a type `P`
+* It receives a value `proof_of_P` of type `P`
+* It returns that same value unchanged
+
+You have written this function a hundred times in every programming language. It is the identity function:
+```typescript
+function identity<T>(x: T) : T {
+  return x;
+}
+```
+The theorem statement `forall P : Prop, P -> P` is the type signature. The proof is the function body. They are the same thing in two different notations.
+
+<hr>
+
+**Step 2 -- What each symbol means in programming terms**
+
+| Logic | Programming | What it means |
+|-------|-------------|---------------|
+| `P : Prop` | `T` | P is a type (generics in programming) |
+| `forall P : Prop` | `<T>` | works for any type T |
+| `P -> Q` | `(p: P) : Q` | function taking P returning Q |
+| `P /\ Q` | `[P, Q]` | pair type -- holds both |
+| `P \/ Q` | `Either<P, Q>` | tagged union -- holds one or another |
+| `True` | `Unit` | exactly one trivial value |
+| `False` | `Never` | zero values -- impossible |
+| `~P` | `(p: P) => never` | function that can never be called | 
+
+<hr>
+
+**Step 3 -- Every tactic is secretly a programming operation**
+
+This is where it gets really interesting. Every tactic you have used in every proof is secretly constructing a program behind the scenes.
+
+Look at your own proofs with fresh eyes:
+
+`intros` -- adds a function argument
+```coq
+intros proof_of_P.
+```
+```typescript
+function f(proof_of_P: P) { ... }
+```
+
+`exact` -- returns a value
+```coq
+exact proof_of_P.
+```
+```typescript
+return proof_of_P;
+```
+
+`apply` -- calls a function
+```coq
+apply proof_of_PtoQ
+```
+```typescript
+proof_of_PtoQ(...)
+```
+
+`split` -- construct a pair
+```coq
+split.
+```
+```typescript
+return [left, right];
+```
+
+`destruct ... as [p q]` -- unpacks a pair
+```coq
+destruct proof_of_PandQ as [proof_of_P proof_of_Q].
+```
+```typescript
+const [proof_of_P, proof_of_Q] = proof_of_PandQ;
+```
+
+`destruct ... as [p | q]` -- pattern matches on Either
+```coq
+destruct proof_of_PorQ as [proof_of_P | proof_of_Q].
+```
+```typescript
+if (proof_of_PorQ.tag === "left") {
+  const proof_of_P = proof_of_PorQ.value;
+} else {
+  const proof_of_Q = proof_of_PorQ.value;
+}
+```
+
+`left`/`right` -- constructs an Either value
+```coq
+left.
+```
+```typescript
+return { tag: "left", value: ... };
+```
+
+<hr>
+
+**Step 4 -- Your proofs are programs, right now**
+
+Let's take a proof you wrote recently and rewrite it as a direct program:
+
+You proved:
+```coq
+Theorem practice_1 : forall P Q R : Prop, (P -> Q) -> (P -> R) -> P -> Q /\ R.
+Proof.
+  intros P Q R proof_of_PtoQ proof_of_PtoR proof_of_P.
+  split.
+  - apply proof_of_PtoQ. exact proof_of_P.
+  - apply proof_of_PtoR. exact proof_of_P.
+Qed.
+```
+Here is the exact same thing written as a direct program:
+```coq
+Definition practice1 : forall P Q R : Prop, (P -> Q) -> (P -> R) -> P -> Q /\ R :=
+  fun P Q R proof_of_PtoQ proof_of_PtoR proof_of_P =>
+    (proof_of_PtoQ proof_of_P, proof_of_PtoR proof_of_P).
+```
+And in Typescript:
+```typescript
+function practice1<P, Q, R>(
+  proof_of_PtoQ: (p: P) => Q,
+  proof_of_PtoR: (p: P) => R,
+  proof_of_P: P
+): [Q, R] {
+  return [proof_of_PtoQ(proof_of_P), proof_of_PtoR(proof_of_P)];
+}
+```
+All three are the same program. Coq tactic style, Coq direct style, Typescript. One underlying computation, three notations.
+
+<hr>
+
+**Step 5 -- What False really means**
+
+This is the deepest piece and worth spending time on.
+
+`False` is the empty type -- a type with zero values. You can never construct something of type `False`.
+
+Now remember `~P` means `P -> False`.
+
+In programming terms: a function that takes a `P` and returns something of the empty type.
+
+Think about what this means carefully. If such a function existed and you called it with a real value of type `P` -- it would have to return something impossible. The only way out is if `P` itself is also empty -- meaning `P` has no values, meaning `P` is false.
+
+This is exactly what negation means in logic. `~P` means P is false -- P has no proofs. And in programming terms it means P is an empty type -- P has no values.
+
+Logic and types saying the identical thing in different words.
+
+<hr>
+
+**Step 6 -- Induction is recursion**
+
+You proved things about natural numbers using `induction`. You proved things about lists using `induction`.
+
+In programming terms -- induction is recursion.
+
+When you proved `add_comm` by induction on `n`:
+* Base case `0` -- the base case of a recursive function
+* Inductive step `S n` -- the recursive case, where you call the function on something smaller
+
+The induction hypothesis `IHn` is the recursive call result -- the thing your function already computed for the smaller input.
+
+Every recursive program you've ever written is secretly a proof by induction. Every proof by induction is secretly a recursive program.
+
+<hr>
+
+**Step 7 -- The Complete Picture**
+
+Here is everything unified:
+```
+Writing a type signature    =   Stating a theorem
+Writing a program           =   Constructing a proof
+Type checking               =   Proof checking
+A well-typed program        =   A correct proof
+A type error                =   A logical contradiction
+Recursion                   =   Induction
+Generic / Polymorphic type  =   Universal quantification
+```
+
+<hr>
+
+### Why this changes how you think
+Once you internalize this, two things happen:
+
+**When you write programs** -- you start thinking about types as logical claims. A function's type signature is a promise. A well-typed program is a proof that the promise is kept. Type errors are logical contradictions your program is making.
+
+**When you write proofs** -- you stop being intimidated. A proof is just a program. You already know how to write programs. You know how to take inputs, transform them, return outputs. Proving a theorem is the same skill applied to logical types instead of data types.
+
+<hr>
+
+### One Final Thing
+Everything you've done in this entire course -- every theorem, every lemma, every tactic -- has been an instance of Curry-Howard in action.
+
+You weren't just learning logic. You weren't just learning programming. You were learning the deep structure that underlies both.
+
+That is what Curry-Howard is.
+
+### Logical Types vs Data Types
+
+**There is no difference.**
+
+They are the same thing viewed from two different angles.
+
+**Where the confusion comes from**
+
+In everyday programming, you think of types like this:
+```typescript
+number
+string
+boolean
+[number, string]  // pair
+```
+These feel like they are about **data** -- what shape information takes.
+
+And in logic you think of propositions like this:
+```
+P /\ Q
+P -> Q
+forall x, P x
+```
+These feel like they are about **truth** -- what claims can be proven.
+
+They feel different because they come from different traditions with different notations and different goals. Programmers invented types to catch bugs. Logicians invented propositions to reason about truth. They didn't know they were building the same thing.
+
+**But look at what they actually do**
+
+A type in programming answers the question:
+
+**"what are the valid values of this thing?"**
+
+A proposition in logic answers the question:
+
+**"what are the valid proofs of this thing?"**
+
+Values and proofs. Both are just **inhabitants of a type**. Both answers the question "what can live inside this?"
+
+* `number` -- inhabited by 1,2,3,...
+* `P /\ Q` -- inhabited by pairs (proof_of_P, proof_of_Q)
+* `False` -- inhabited by nothing
+* `True` -- inhabited by exactly one trivial thing
+
+Same question. Same structure. Different vocabulary.
+
+* **Data types** -- types you're used to from programming: `number`, `string`, `list`, `pair`
+* **Logical types** -- types that look like propositions: `P /\ Q`, `P -> Q`, `forall x, P x`
