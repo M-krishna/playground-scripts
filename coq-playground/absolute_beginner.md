@@ -2697,3 +2697,219 @@ Fixpoint reverse (A : Type) (l : list A) : list A :=
 | You're experienced | Read function definitions. Notice which arguments they recurse on. Predict hard cases upfront |
 
 Every time you hit a wall in a Coq proof, stop and ask: "what fact about my functions, if I had it, would let me move forward?" That fact is your next lemma.
+
+## The Curry-Howard Correspondence -- From Scratch
+
+### What?
+The Curry-Howard Correspondence is the discovery that **logic and programming are secretly the same thing**.
+
+Not similar. Not analogous. The same thing, viewed from two different angles.
+
+It says:
+| Logic | Programming |
+|-------|-------------|
+| A proposition | A type |
+| A proof | A program |
+| Proving P is true | Writing a program of type P |
+
+Every logical concept has an exact programming counterpart. Every programming concept has an exact logical counterpart. They are two languages describing one underlying reality.
+
+<hr>
+
+### Why does this matter?
+Because it means:
+* Every proof you've written in Coq is secretly a program
+* Every program you write is secretly a proof of something
+* Verifying a program is correct is the same thing as proving a theorem
+
+This is not a philosophical curiosity. It is the entire reason Coq exists. It is why you can use Coq to both write programs and prove theorems -- because at the deepest level those are the same activity.
+
+<hr>
+
+### How? -- Building it from scratch, one piece at a time
+Let's go back to things you already know and look at them with fresh eyes.
+
+**Piece 1 -- Propositions are Types**
+
+Remember from the very beginning:
+```coq
+P : Prop
+```
+Means "P is a proposition".
+
+But also remember:
+```coq
+n : nat
+```
+Means "n is a natural number" -- n has type nat.
+
+In Coq everything has a type. Including propositions. `Prop` is itself a type -- it is the type of propositions.
+
+Now here is the key shift in perspective:
+
+**A proposition is not just a statement that is true or false. A proposition is a type -- the type of its own proofs.**
+
+What does that mean? Let's take a specific example.
+```coq
+P /\ Q
+```
+This proposition is also a type. Specifically it is the type of pairs -- things that contain a proof of P and a proof of Q together.
+
+```coq
+P \/ Q
+```
+This proposition is also a type. Specifically it is the type of tagged values -- things that are either a proof of P or a proof of Q, with a label saying which one.
+
+```coq
+P -> Q
+```
+This proposition is also a type. Specifically it is the type of functions -- things that take a proof of P and return a proof of Q.
+
+<hr>
+
+**Piece 2 -- Proofs are Programs**
+
+If a proposition is a type, then a proof of that proposition is a value of that type -- which is exactly what a program produces.
+
+Let's look at your very first theorem with fresh eyes:
+```coq
+Theorem easy_1 : forall P : Prop, P -> P.
+Proof.
+  intros P proof_of_P.
+  exact proof_of_P.
+Qed.
+```
+What is this secretly? It is a function:
+* It takes a type `P`
+* It takes a value `proof_of_P` of type `P`
+* It returns that same value unchanged
+
+In programming terms this is the **identity function**:
+```javascript
+function identity(x) {
+  return x;
+}
+```
+The proof IS the program. The theorem statement IS the type signature.
+
+<hr>
+
+**Piece 3 -- Every tactic builds a program**
+
+This is where it gets really interesting. Every tactic you've been using is secretly constructing a program behind the scenes.
+
+| Tactic | What is secretly does |
+|--------|-----------------------|
+| `intros x` | Adds a function argument named x |
+| `exact x` | Returns x as the result |
+| `apply f` | Calls function f |
+| `split` | Constructs a pair |
+| `destruct` | Pattern matches on a value |
+| `left` | Tags a value as left variant |
+| `right` | Tags a value as right variant |
+
+When you write a proof in tactic mode, Coq is building a program underneath. The tactics are just a friendly interface for constructing that program step by step.
+
+**Question:** Is it possible to build a custom tactic ourselves?
+
+<hr>
+
+**Piece 4 -- The Correspondence table in full**
+| Logic concept | Programming concept | Coq |
+|---------------|---------------------|-----|
+| Proposition | Type | `Prop` |
+| Proof | Program/Value | Any term |
+| `P -> Q` | Function type | `fun x : P => ...` |
+| `P /\ Q` | Pair/Product type | `(proof_of_P, proof_of_Q)` |
+| `P \/ Q` | Tagged union/Sum type | `inl proof_of_P` or `inr proof_of_Q` |
+| `True` | Unit type -- one trivial value | `I` |
+| `False` | Empty type -- no value | Nothing |
+| `forall x, P x` | Dependent function type | `fun x => ...` |
+| `exists x, P x` | Dependent pair type | `(witness, proof)` |
+
+<hr>
+
+**Piece 5 -- `False` is the empty type**
+
+This one is worth pausing on because it's beautiful.
+
+`False` is a proposition with no proof. You can never construct evidence for it.
+
+In programming terms -- `False` is a type with no values. You can never construct something of that type.
+
+Now remember -- `~P` means `P -> False`. In programming that means: "A function that takes a value of type P and returns a value of type False".
+
+But there are no values of type False. So such a function can never actually be called with a real input -- unless P itself is also empty, meaning P has no proofs either.
+
+This is exactly what negation means logically. If P is true it has a proof, and then `~P` would need to produce something impossible. So `~P` can only exist if P has no proofs -- meaning P is false.
+
+Logic and types saying the exact same thing.
+
+<hr>
+
+**Piece 6 -- You can write proofs as programs directly**
+
+In Coq you don't have to use tactics at all. You can write the proof term directly as a program.
+
+Your first theorem is written as a direct program:
+```coq
+Definition easy_1 : forall P : Prop, P -> P :=
+  fun P => fun proof_of_P => proof_of_P.
+```
+Your second theorem -- implication is transitive:
+```coq
+Definition easy_2 : forall P Q R : Prop, (P -> Q) -> (Q -> R) -> P -> R :=
+  fun P Q R proof_of_PtoQ proof_of_QtoR proof_of_P =>
+    proof_of_QtoR (proof_of_PtoQ proof_of_P).
+```
+Read that last line in plain English:
+* Apply `proof_of_PtoQ` to `proof_of_P` -- produces a proof of Q
+* Apply `proof_of_QtoQ` to that -- produces a proof of R
+
+That is function composition. The logical proof of transitivity IS function composition.
+
+<hr>
+
+**Piece 7 -- Why this matters for everything ahead**
+
+Remember `Inductive nat`?
+```coq
+Inductive nat : Type :=
+  | 0 : nat
+  | S : nat -> nat.
+```
+This is a type definition. But by Curry-Howard it is also a logical definition. `nat` is simultaneously:
+* A type whose values are natural numbers
+* A proposition whose proofs encode natural numbers
+
+And `induction` on `nat` is simultaneously:
+* A way to prove things about all numbers
+* A way to write recursive programs over numbers
+
+<hr>
+
+### Summary
+The Curry-Howard Correspondence says:
+```
+Propositions = Types
+Proofs       = Programs
+Proving      = Programming
+```
+Every proof you have written is secretely a program. Every theorem statement was secretely a type signature. The tactics were secretely a program constructing interface.
+
+You weren't just doing logic. You were writing programs that happen to be proofs.
+
+<hr>
+
+This is also called the **propositions-as-types** interpretation, or sometimes **proofs-as-programs**. You will see these terms in papers and textbooks -- they all refer to this same correspondence.
+
+### Question to test myself
+Below are few questions to test myself whether I understood the above concepts or not.
+
+**Question 1**
+
+Look at this theorem you proved earlier:
+```coq
+Theorem easy_3 : forall P Q : Prop, P /\ Q -> Q /\ P.
+```
+Describe this theorem in purely programming terms. Don't use the words "proof" or "proposition" or "logic". Pretend you're describing it to a programmer who has never heard of Coq.
