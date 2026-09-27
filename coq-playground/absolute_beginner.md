@@ -3208,3 +3208,65 @@ Same question. Same structure. Different vocabulary.
 
 * **Data types** -- types you're used to from programming: `number`, `string`, `list`, `pair`
 * **Logical types** -- types that look like propositions: `P /\ Q`, `P -> Q`, `forall x, P x`
+
+## Dependent Types -- The Complete Picture
+
+### Why does this exist?
+Let's start from a problem you already feel.
+
+You wrote this function:
+```coq
+Fixpoint append (A : Type) (l1 l2 : list A) : list A
+```
+And you proved this theorem separately:
+```coq
+Theorem length_append : forall (A : Type) (l1 l2 : list A),
+  length A (append A l1 l2) = length A l1 + length A l2.
+```
+Notice something uncomfortable here. The function and the fact about the function live in **two completely separate places**. The type of `append` says almost nothing useful -- just "takes two lists, returns a list." The interesting fact -- that the output length equals the sum of input lengths -- lives in a separate theorem that has no connection to the function itself.
+
+This means:
+* You could write a completely broken version of `append` that returns an empty list
+* The type would accept it with no complaints
+* Only your separate theorem would catch the problem -- and only if you proved it
+
+In other words -- the type is not doing its job fully. It's describing the shape of data but not the facts about data.
+
+Dependent types fix this. They let you move facts from separate theorems directly into types -- so the type checker enforces correctness automatically.
+
+<hr>
+
+### What is a dependent type -- precisely?
+In every programming language you have used before, types and values live in completely separate worlds:
+```typescript
+// values
+42
+"hello"
+[1, 2, 3]
+
+// Types
+number
+string
+number[]
+```
+Types describe values. But types never **depend on** specific values. `number[]` is just `number[]` -- it doesn't know if it has 3 elements or 300.
+
+A dependent type is a type that **takes a value as input and produces a different type based on that value.**
+
+So instead of just:
+```
+list        - a type
+```
+You can have:
+```
+vec n     - a familty of types, one for each number n
+vec 0     - the type of empty lists
+vec 3     - the type of list with exactly 3 elements
+vec 100   - the type of lists with exactly 100 elements
+```
+`vec 3` and `vec 5` are completely different types. You can never mix them up. The number is baked into the type itself.
+
+<hr>
+
+### Building Intuition -- from what you already know
+You have already seen dependent types without knowing it.
