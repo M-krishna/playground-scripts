@@ -35,3 +35,31 @@ def register_player(players, name, next_id):
     new_next_id = compute_next_id(next_id)
     return (player, new_next_id)
 ```
+**Checkout:** `python-playground/functional-core/exercises/01_exercise.py`
+
+# Exercise 2 -- effects as values
+Problem statement. You're building the notification step for a bank account after a withdrawal. Here's the tangled version:
+```python
+def withdraw(balance, amount):
+    new_balance = balance - amount
+    if new_balance < 0:
+        print("Withdrawal denied: insufficient funds")
+        return balance
+    if new_balance < 100:
+        print("Warning: low balance")
+    if amount > 10000:
+        print("Large withdrawal logged for compliance")
+    print(f"Withdrew {amount}. New balance: {new_balance}")
+    return new_balance
+```
+This function tangles the *decisions* (when to deny, when to warn, when to log for compliance) with the *doing* (printing, returning a balance). The decisions are business rules and belong in a pure core; right now you couldn't test "does a 15000 withdrawal trigger a compliance log?" without capturing console output.
+
+Your task, in order. Think before writing.
+1. Before any code, list the distinct effects this function might emit, and note which are conditional. There's a subtlety: one of the branches (the denial) is different in kind from the others — it doesn't just add a message, it changes what the function does with the balance. Spot which one, and think about whether "the resulting balance" is itself something the plan needs to carry, or whether it's separate from the effects.
+2. Write a pure plan_withdraw(balance, amount) that returns a plan. You get to decide the plan's shape, but it has to express two things: the sequence of effect-instructions (deny / warn / compliance-log / success-message, as applicable), and what the resulting balance should be. Think about whether one flat list of tuples can hold both, or whether you want the plan to be, say, a pair of (new_balance, list_of_instructions). Let the question "where does the balance live in my plan?" drive the design — that's the real lesson of this exercise. The function must not print. It only decides and returns.
+3. Write assertions for three scenarios, checking the contents of the plan (not its length): a normal withdrawal, a denied one (insufficient funds), and a large one that both leaves a low balance and trips the compliance log. For the denied case, assert that the balance in the plan is unchanged and that no success message is present.
+
+A hint, since this one adds a wrinkle we haven't hit: so far our plans carried only *effects*. This time the plan also has to carry a plain result (the new balance) that isn't an effect at all -- it's just data the caller needs. That's why task 1 asks you to separate "the balance" from "the messages." A plan can be more than a list of effects; it can be a result *plus* the effects that should accompany it. Working out that structure is the point.
+
+**Here are my answers:**
+1. 
