@@ -60,6 +60,16 @@ function updateFire(grid) {
     return nextGrid;
 }
 
+/**
+ * 
+ * @param {number} start - The starting value of a color 
+ * @param {number} end  - The ending value of a color
+ * @param {number} t - Linear interpolation value
+ */
+function interpolate(start, end, t) {
+    return start + (t * (end - start)); 
+}
+
 function main() {
     let grid = initializeFire(originalGrid);
 

@@ -222,3 +222,165 @@ Each generation moves the heat simulation one step forward.
 **Question:** If we want the fire to keep burning and evolving, why do we need to repeatedly call `updateFire()` instead of calling it just once?
 
 **Answer:** Because `updateFire()` function is the one which keeps updating the individual cells. Without updating the heat values, the fire won't evolve and keep burning. It just stays at the same value.
+
+# 6. Mapping heat values to colours
+So far, our grid contains numbers represent heat intensity. But we eventually want to display those numbers as coloured pixels. We need a way to translate: **Heat value -> RGB colour**. First lets understand RGB.
+
+## Concept 1 - RGB colour representation
+A colour on a computer screen is represented using three components:
+* **R**: Red intensity
+* **G**: Green intensity
+* **B**: Blue intensity
+
+Each component has a value between `0` and `255`. For example:
+| Colour | RGB |
+|--------|-----|
+| Black | (0, 0, 0) |
+| Red | (255, 0, 0) |
+| Green | (0, 255, 0) |
+| Blue | (0, 0, 255) |
+| Yellow | (255, 255, 0) |
+| White | (255, 255, 255) |
+
+Think of RGB as three independent light sources. Changing their intensities produces different colours.
+
+Let's reason about this. We want to transition from red to yellow.
+* Red = (255, 0, 0)
+* Yellow = (255, 255, 0)
+
+What happens to each of the three RGB components during this transition? Specifically:
+1. Does red increase, decrease, or stay constant?
+2. Does green increase, decrease, or stay constant?
+3. Does blue increase, decrease, or stay constant?
+
+**Answer:**
+* When transitioning from red to yellow, R stays constant, G increases, and B stays constant.
+
+**Key idea:** A colour transition can be created by gradually changing the individual RGB components.
+
+## Concept 2 - Why do we need interpolation?
+Imagine we have two endpoints:
+* Starting colour: Red (255, 0, 0)
+* Ending colour: Yellow (255, 255, 0)
+
+We know the green component must move from `0` to `255`. But how do we calculate the green value for an intermediate heat value? We need a mathematical technique called **linear interpolation**, commonly shortened to *lerp*. Before introducing the formula, let's work through a small example.
+
+Suppose the heat range is `100` to `200`.
+* Heat `100` should produce red.
+* Head `200` should produce yellow.
+* Heat `150` is exactly halfway between them.
+
+**Question:** If heat `150` is halfway between red and yellow, what should its RGB colour be?
+
+To find the answer, we have to use a mathematical concept called **Linear interpolation**.
+
+## Linear Interpolation (Lerp)
+Linear interpolation is a technique used to calculate an intermediate value between two known endpoints. We use it to calculate intermediate RGB values during a colour transition.
+
+### Step 1: Calculate the interpolation factor
+```
+t = (currentHeat - startHeat) / (endHeat - startHeat)
+```
+The interpolation factor `t` represents how far we've progressed from the starting heat value to the ending heat value.
+* t = 0: At the starting point.
+* t = 0.5: Halfway between the endpoints.
+* t = 1: At the ending point.
+
+### Step 2: Apply the interpolation factor to a colour component
+```
+color = startcolor + t(endColor - startColor)
+```
+This calculates the intermediate color component using the same progress factor.
+
+**Example: Red to Yellow** 
+Heat range:
+* Starting heat: 100
+* Ending heat: 200
+* Current heat: 150
+
+Starting color: (255, 0, 0)
+Ending color: (255, 255, 0)
+
+First calculate the interpolation factor:
+```
+t = (150 - 100) / (200 - 100)
+t = 50 / 100
+t = 0.5
+```
+Next, calculate the green component:
+```
+G = 0 + 0.5(255 - 0)
+G = 0 + 0.5(255)
+G = 127.5
+```
+Red and blue remain unchanged. Result: `RGB(255, 127.5, 0)`. Rounded to integer values: `RGB(255, 128, 0)` 
+
+**Key idea:** First calculate the progress through the heat range. Then use that same progress to calculate the intermediate colour component.
+
+**Next exercise:** Let's test whether the idea has clicked. Suppose:
+* Starting heat = 100
+* Ending heat = 200
+* Current heat = 175
+* Green transitions from 0 to 255
+
+What is:
+1. The interpolation factor `t`?
+2. The resulting green component?
+
+**Solution:**
+```
+t = (175 - 100) / (200 - 100)
+t = 75 / 100
+t = 0.75
+
+G = 0 + 0.75(255 - 0)
+G = 0 + 0.75(255)
+G = 191.25
+
+Therefore, RGB(255, 191, 0)
+```
+
+### One more concept: Interpolating all RGB components
+So far, we've only interpolated the green component because red and blue remain constant during our red-to-yellow transition. But imagine transitioning from black to white:
+* Black: `(0, 0, 0)`
+* White: `(255, 255, 255)`
+
+All three components must change.
+
+**Question:** If we're halfway through this transition (`t = 0.5`), what would the resulting RGB colour be? Try calculating R, G, and B independently.
+
+**Solution:**
+```
+t = 0.5
+
+R = 0 + 0.5(255 - 0)
+R = 0 + 0.5(255)
+R = 127.5
+
+G = 0 + 0.5(255 - 0)
+G = 0 + 0.5(255)
+G = 127.5
+
+B = 0 + 0.5(255 - 0)
+B = 0 + 0.5(255)
+B = 127.5
+
+(R, G, B) = (128, 128, 128)
+```
+
+### Next exercise
+We're transitioning from black `(0, 0, 0)` to white `(255, 255, 255)`. What would the RGB colour be when `t = 0.25`?
+```
+t = 0.25
+
+R = 0 + 0.25(255 - 0)
+R = 63.75
+
+G = 0 + 0.25(255 - 0)
+G = 63.75
+
+B = 0 + 0.25(255 - 0)
+B = 63.75
+
+(R, G, B) = (64, 64, 64)
+```
