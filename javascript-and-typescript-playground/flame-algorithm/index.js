@@ -127,15 +127,37 @@ function drawFrame(grid) {
 
 let grid = initializeFire(createGrid(ROWS, COLS));
 
-function animate() {
-    grid = updateFire(grid);
+const UPDATE_INTERVAL = 60;    // milliseconds
+let accumulatedTime = 0;
+let previousTimestamp = null;
 
+function animate(timestamp) {
+
+    if (previousTimestamp === null) {
+        previousTimestamp = timestamp;
+    }
+
+    // 1. calculate the elapsed time (delta)
+    const delta = timestamp - previousTimestamp;
+    previousTimestamp = timestamp;
+
+    // 2. Accumulate elapsed time
+    accumulatedTime += delta;
+
+    // 3. Update the simulation when due
+    while (accumulatedTime >= UPDATE_INTERVAL) {
+        grid = updateFire(grid);
+        accumulatedTime -= UPDATE_INTERVAL;
+    }
+    
+    // 4. Draw the current grid
     drawFrame(grid);
+
     requestAnimationFrame(animate);
 }
 
 function main() {
-    animate(); 
+    requestAnimationFrame(animate);
 }
 
 main();
